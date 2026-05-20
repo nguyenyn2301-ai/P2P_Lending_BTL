@@ -6,15 +6,18 @@ import model.LoanApplication;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
 public class BorrowerDAO {
 
-    // 1. CẬP NHẬT: Lấy thông tin cơ bản VÀ số dư ví (wallet_balance) của Borrower dựa trên ID
+    // =========================================================================
+    // 1. LẤY THÔNG TIN CƠ BẢN CỦA BORROWER (GIAO DIỆN DASHBOARD)
+    // =========================================================================
     public Borrower getBorrowerById(long borrowerId) {
-        String sql = "SELECT borrower_id, first_name, last_name, verification_status, monthly_income, wallet_balance " +
-                     "FROM borrowers WHERE borrower_id = ?";
+        String sql = "SELECT borrower_id, first_name, last_name, verification_status, monthly_income, " +
+                     "id_card_number FROM borrowers WHERE borrower_id = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             
@@ -25,13 +28,19 @@ public class BorrowerDAO {
                     b.setBorrowerId(rs.getLong("borrower_id"));
                     b.setFirstName(rs.getString("first_name"));
                     b.setLastName(rs.getString("last_name"));
-                    b.setVerificationStatus(rs.getString("verification_status"));
-                    b.setMonthlyIncome(rs.getDouble("monthly_income"));
                     
-                    // LƯU Ý: Đảm bảo class model.Borrower của bạn đã có thuộc tính wallet_balance (Double hoặc BigDecimal)
-                    // Nếu dùng getter/setter khác tên, hãy đổi lại dòng dưới này cho khớp
-                    b.setWalletBalance(rs.getDouble("wallet_balance")); 
+                    // Chuẩn hóa hiển thị trạng thái eKYC ra giao diện Tiếng Việt
+                    String vStatus = rs.getString("verification_status");
+                    if ("pending".equalsIgnoreCase(vStatus)) b.setVerificationStatus("Chờ duyệt");
+                    else if ("verified".equalsIgnoreCase(vStatus)) b.setVerificationStatus("Đã xác thực");
+                    else if ("rejected".equalsIgnoreCase(vStatus)) b.setVerificationStatus("Bị từ chối");
+                    else b.setVerificationStatus(vStatus);
                     
+                    // Đồng bộ kiểu dữ liệu BigDecimal sang double (hoặc giữ nguyên nếu Model là BigDecimal)
+                    BigDecimal incomeBg = rs.getBigDecimal("monthly_income");
+                    b.setMonthlyIncome(incomeBg != null ? incomeBg.doubleValue() : 0.0);
+                    
+                    b.setIdCardNumber(rs.getString("id_card_number"));
                     return b;
                 }
             }
@@ -41,20 +50,24 @@ public class BorrowerDAO {
         return null;
     }
 
-    // 2. CẬP NHẬT ĐÃ SỬA LỖI LOGIC: Tính tổng dư nợ thực tế từ các khoản vay gọi vốn thành công/đang chạy
+    // =========================================================================
+    // 2. TÍNH TỔNG DƯ NỢ THỰC TẾ (LỌC THEO STATUS ACTIVE CỦA KHOẢN VAY)
+    // =========================================================================
     public double getCurrentDebt(long borrowerId) {
         double totalDebt = 0.0;
-        // SỬA: Thay 'active' thành 'success' (hoặc 'disbursed') để khớp hoàn toàn với ENUM của bảng loans nhóm bạn
         String sql = "SELECT SUM(l.total_amount) FROM loans l " +
                      "INNER JOIN loan_applications la ON l.application_id = la.application_id " +
-                     "WHERE la.borrower_id = ? AND l.status = 'success'";
+                     "WHERE la.borrower_id = ? AND l.status = 'active'";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             
             ps.setLong(1, borrowerId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    totalDebt = rs.getDouble(1);
+                    BigDecimal debtBg = rs.getBigDecimal(1);
+                    if (debtBg != null) {
+                        totalDebt = debtBg.doubleValue();
+                    }
                 }
             }
         } catch (Exception e) {
@@ -63,7 +76,9 @@ public class BorrowerDAO {
         return totalDebt;
     }
 
-    // 3. GIỮ NGUYÊN: Lấy danh sách hồ sơ đơn vay của Borrower (Sắp xếp đơn mới nhất lên đầu)
+    // =========================================================================
+    // 3. LẤY DANH SÁCH ĐƠN VAY CÁ NHÂN (ĐỒNG BỘ ĐỊNH DẠNG MỚI)
+    // =========================================================================
     public List<LoanApplication> getLoansByBorrower(long borrowerId) {
         List<LoanApplication> list = new ArrayList<>();
         String sql = "SELECT application_id, amount_requested, term_months, created_at, cic_pdf_url, status " +
@@ -77,11 +92,18 @@ public class BorrowerDAO {
                     LoanApplication loan = new LoanApplication();
                     
                     loan.setApplicationId(rs.getLong("application_id")); 
-                    loan.setAmountRequested(rs.getDouble("amount_requested")); 
+                    loan.setAmountRequested(rs.getBigDecimal("amount_requested")); 
                     loan.setTermMonths(rs.getInt("term_months")); 
                     loan.setCreatedAt(rs.getTimestamp("created_at"));
                     loan.setCicPdfUrl(rs.getString("cic_pdf_url")); 
-                    loan.setStatus(rs.getString("status"));
+                    
+                    // Ánh xạ trạng thái hiển thị tiếng Việt đồng bộ với hệ thống chính
+                    String dbStatus = rs.getString("status");
+                    if ("pending".equalsIgnoreCase(dbStatus)) loan.setStatus("Chờ duyệt");
+                    else if ("approved".equalsIgnoreCase(dbStatus)) loan.setStatus("Đã duyệt");
+                    else if ("rejected".equalsIgnoreCase(dbStatus)) loan.setStatus("Bị từ chối");
+                    else if ("funded".equalsIgnoreCase(dbStatus)) loan.setStatus("Đã gọi vốn xong");
+                    else loan.setStatus(dbStatus);
                     
                     list.add(loan);
                 }
@@ -92,36 +114,60 @@ public class BorrowerDAO {
         return list;
     }
 
-    /**
-     * 🛠️ GIỮ NGUYÊN: Cập nhật thông tin eKYC đầy đủ khi gửi lại hồ sơ bị lỗi
-     */
-    public boolean updateBorrowerEkyc(Borrower borrower) {
-        String sql = "UPDATE borrowers SET first_name = ?, last_name = ?, monthly_income = ?, verification_status = ? WHERE borrower_id = ?";
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+    // =========================================================================
+    // 4. LƯU HOẶC GHI ĐÈ FILE ĐỊNH DANH EKYC (TRÁNH RÁC DATABASE)
+    // =========================================================================
+    public boolean saveOrUpdateDocument(long userId, String type, String fileUrl) {
+        String checkSql = "SELECT COUNT(*) FROM documents WHERE user_id = ? AND document_type = ?";
+        String insertSql = "INSERT INTO documents (user_id, document_type, file_url, uploaded_at) VALUES (?, ?, ?, NOW())";
+        String updateSql = "UPDATE documents SET file_url = ?, uploaded_at = NOW() WHERE user_id = ? AND document_type = ?";
+        
+        try (Connection conn = DBConnection.getConnection()) {
+            boolean exists = false;
             
-            ps.setString(1, borrower.getFirstName());
-            ps.setString(2, borrower.getLastName());
-            ps.setDouble(3, borrower.getMonthlyIncome());
-            ps.setString(4, borrower.getVerificationStatus());
-            ps.setLong(5, borrower.getBorrowerId());
+            // Bước 4.1: Kiểm tra sự tồn tại của cấu trúc chứng từ
+            try (PreparedStatement psCheck = conn.prepareStatement(checkSql)) {
+                psCheck.setLong(1, userId);
+                psCheck.setString(2, type);
+                try (ResultSet rs = psCheck.executeQuery()) {
+                    if (rs.next() && rs.getInt(1) > 0) {
+                        exists = true;
+                    }
+                }
+            }
             
-            return ps.executeUpdate() > 0;
+            // Bước 4.2: Thực thi cập nhật hoặc chèn mới linh hoạt
+            if (exists) {
+                try (PreparedStatement psUpdate = conn.prepareStatement(updateSql)) {
+                    psUpdate.setString(1, fileUrl);
+                    psUpdate.setLong(2, userId);
+                    psUpdate.setString(3, type);
+                    return psUpdate.executeUpdate() > 0;
+                }
+            } else {
+                try (PreparedStatement psInsert = conn.prepareStatement(insertSql)) {
+                    psInsert.setLong(1, userId);
+                    psInsert.setString(2, type);
+                    psInsert.setString(3, fileUrl);
+                    return psInsert.executeUpdate() > 0;
+                }
+            }
         } catch (Exception e) {
             e.printStackTrace();
         }
         return false;
     }
 
-    /**
-     * GIỮ NGUYÊN: Hàm cũ của bạn dùng để update nhanh trạng thái eKYC
-     */
+    // =========================================================================
+    // 5. CẬP NHẬT TRẠNG THÁI XÁC THỰC EKYC (ĐỒNG BỘ THEO CHUẨN ENUM)
+    // =========================================================================
     public boolean updateEkycStatus(long borrowerId, String status) {
         String sql = "UPDATE borrowers SET verification_status = ? WHERE borrower_id = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             
-            ps.setString(1, status);
+            // Luôn lưu trạng thái tiếng Anh viết thường vào DB ('pending', 'verified', 'rejected')
+            ps.setString(1, status.toLowerCase().trim());
             ps.setLong(2, borrowerId);
             
             return ps.executeUpdate() > 0;
@@ -129,12 +175,5 @@ public class BorrowerDAO {
             e.printStackTrace();
         }
         return false;
-    }
-
-    /**
-     * BỔ SUNG: Hàm trùng tên (Alias) với luồng gọi trong Controller nhằm tránh lỗi Compile Error
-     */
-    public boolean updateVerificationStatus(long borrowerId, String status) {
-        return this.updateEkycStatus(borrowerId, status);
     }
 }

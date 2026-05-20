@@ -383,7 +383,31 @@ body {
 .btn-submit:hover {
     background-color: var(--primary-hover);
 }
-
+ 
+        /* CSS bổ trợ để các khung xem trước ảnh eKYC gọn gàng hơn */
+        .preview-box {
+            margin-top: 8px;
+            display: none;
+            max-width: 100%;
+            border: 1px dashed #cbd5e1;
+            border-radius: 6px;
+            padding: 5px;
+            background: #f8fafc;
+        }
+        .preview-box img {
+            max-height: 150px;
+            object-fit: contain;
+            border-radius: 4px;
+            display: block;
+            margin: 0 auto;
+        }
+        .currency-preview {
+            font-size: 13px;
+            color: #10b981;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+    
 /* ==========================================================================
    8. RESPONSIVE MEDIA QUERIES (Tối ưu thiết bị di động)
    ========================================================================== */
@@ -428,3 +452,4 @@ body {
         overflow-x: auto; /* Cuộn ngang bảng nếu màn hình quá bé */
     }
 }
+ 

@@ -7,66 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sàn P2P Lending - Bảng Điều Khiển</title>
-    <!-- Nhúng file CSS tách riêng của bạn ở đây -->
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/dashboard.css">
-    <style>
-        /* Các class CSS bổ sung riêng cho hiển thị 5 gói vay đẹp hơn */
-        .package-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-        }
-        .package-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px dashed #e2e8f0;
-            padding-bottom: 12px;
-            margin-bottom: 15px;
-        }
-        .package-title {
-            font-size: 16px;
-            font-weight: bold;
-            color: #0f172a;
-        }
-        .package-limit {
-            font-size: 15px;
-            font-weight: 700;
-            color: #2563eb;
-        }
-        .package-desc {
-            font-size: 14px;
-            color: #475569;
-            margin-bottom: 15px;
-            line-height: 1.5;
-        }
-        .sub-config-title {
-            font-size: 13px;
-            font-weight: 600;
-            color: #64748b;
-            text-transform: uppercase;
-            margin-bottom: 8px;
-        }
-        .sub-config-list {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .sub-config-item {
-            background: #f1f5f9;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-size: 13px;
-            color: #1e293b;
-        }
-        .sub-config-item strong {
-            color: #16a34a;
-        }
-    </style>
 </head>
 <body>
 
@@ -96,10 +37,6 @@
                     </c:otherwise>
                 </c:choose>
 
-                <li class="${currentAction == 'loan_packages' ? 'active' : ''}">
-                    <a href="${pageContext.request.contextPath}/BorrowerDashboardServlet?action=loan_packages">🎁 Các Gói Vay Hệ Thống</a>
-                </li>
-
                 <li class="${currentAction == 'market_loans' ? 'active' : ''}">
                     <a href="${pageContext.request.contextPath}/BorrowerDashboardServlet?action=market_loans">🌐 Khoản Vay Trên Sàn</a>
                 </li>
@@ -115,10 +52,9 @@
             <div class="topbar-title" id="dynamic-topbar-title">
                 <c:choose>
                     <c:when test="${currentAction == 'create_loan'}">Đăng Ký Khoản Vay Mới</c:when>
-                    <c:when test="${currentAction == 'loan_packages'}">Các Gói Vay Hệ Thống Hỗ Trợ</c:when>
                     <c:when test="${currentAction == 'market_loans'}">Khoản Vay Đang Gọi Vốn Toàn Sàn</c:when>
                     <c:when test="${currentAction == 're_ekyc'}">Cập Nhật Thông Tin Định Danh eKYC</c:when>
-                    <c:otherwise>Bảng Điều Khiển Tổng Quan</c:otherwise>
+                    <c:otherwise>Bảng Điều Khiển Tổng Overview</c:otherwise>
                 </c:choose>
             </div>
             <div class="user-info">
@@ -143,7 +79,13 @@
             <%-- THÔNG BÁO HỆ THỐNG --%>
             <c:if test="${param.msg == 'ekyc_updated_success'}">
                 <div class="alert-banner alert-banner-success">
-                    <strong>🎉 Thành công:</strong> Hồ sơ eKYC của bạn đã được gửi lại thành công. Trạng thái tài khoản chuyển về <b>Chờ duyệt (Pending)</b>.
+                    <strong>🎉 Thành công:</strong> Hồ sơ eKYC của bạn đã được cập nhật thành công. Trạng thái chuyển về <b>Chờ duyệt (Pending)</b>.
+                </div>
+            </c:if>
+
+            <c:if test="${param.msg == 'ekyc_updated_failed'}">
+                <div class="alert-banner alert-banner-danger">
+                    <strong>❌ Thất bại:</strong> Đã xảy ra lỗi khi upload hoặc cập nhật thông tin hồ sơ eKYC. Vui lòng thử lại.
                 </div>
             </c:if>
 
@@ -225,11 +167,12 @@
                                                         </c:choose>
                                                     </td>
                                                     <td>
+                                                        <%-- ĐỒNG BỘ: Đổi chuỗi text so sánh sang tiếng Việt khớp DB --%>
                                                         <c:choose>
-                                                            <c:when test="${myLoan.status == 'pending'}"><span style="color:#a16207; font-weight:600;">Chờ duyệt</span></c:when>
-                                                            <c:when test="${myLoan.status == 'approved'}"><span style="color:#2563eb; font-weight:600;">Đã duyệt</span></c:when>
-                                                            <c:when test="${myLoan.status == 'funded'}"><span style="color:#16a34a; font-weight:600;">Đã gọi vốn</span></c:when>
-                                                            <c:otherwise><span style="color:#dc2626; font-weight:600;">Từ chối</span></c:otherwise>
+                                                            <c:when test="${myLoan.status == 'Chờ duyệt'}"><span style="color:#a16207; font-weight:600;">Chờ duyệt</span></c:when>
+                                                            <c:when test="${myLoan.status == 'Đã duyệt'}"><span style="color:#2563eb; font-weight:600;">Đã duyệt</span></c:when>
+                                                            <c:when test="${myLoan.status == 'Đang gọi vốn'}"><span style="color:#16a34a; font-weight:600;">Đang gọi vốn</span></c:when>
+                                                            <c:otherwise><span style="color:#dc2626; font-weight:600;"><c:out value="${myLoan.status}"/></span></c:otherwise>
                                                         </c:choose>
                                                     </td>
                                                 </tr>
@@ -249,9 +192,26 @@
                 <c:when test="${currentAction == 're_ekyc'}">
                     <div class="data-card" style="max-width: 600px; margin: 0 auto;">
                         <h4>🔄 Làm mới hồ sơ định danh cá nhân (eKYC)</h4>
+                        
+                        <%-- SỬA ĐỒI: Đưa param action vào thẻ hidden để tránh lỗi mất gói tin multipart --%>
                         <form action="${pageContext.request.contextPath}/BorrowerDashboardServlet" method="POST" enctype="multipart/form-data">
                             <input type="hidden" name="action" value="update_ekyc">
                             
+                            <div class="form-group">
+                                <label>Họ và Tên đệm <span style="color:red;">*</span></label>
+                                <input type="text" name="firstName" class="form-control" value="${not empty borrowerObj.firstName ? borrowerObj.firstName : ''}" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Tên <span style="color:red;">*</span></label>
+                                <input type="text" name="lastName" class="form-control" value="${not empty borrowerObj.lastName ? borrowerObj.lastName : ''}" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Số CCCD / CMND mới <span style="color:red;">*</span></label>
+                                <input type="text" name="idCardNumber" class="form-control" value="${not empty borrowerObj.idCardNumber ? borrowerObj.idCardNumber : ''}" required>
+                            </div>
+
                             <div class="form-group">
                                 <label>Ảnh mặt trước CCCD / CMND <span style="color:red;">*</span></label>
                                 <input type="file" name="cccd_front" class="form-control" accept="image/*" required onchange="previewImage(this, 'front_preview')">
@@ -276,12 +236,12 @@
                                 <div id="updateCurrencyPreview" class="currency-preview"></div>
                             </div>
                             
-                            <button type="submit" class="btn-submit" style="background-color: #f59e0b; color: #0f172a;">🚀 Gửi lại hồ sơ kiểm duyệt</button>
+                            <button type="submit" class="btn-submit" style="background-color: #f59e0b; color: #0f172a; font-weight: bold; cursor: pointer;">🚀 Gửi lại hồ sơ kiểm duyệt</button>
                         </form>
                     </div>
                 </c:when>
 
-                <%-- TAB 2: ĐĂNG KÝ VAY --%>
+                <%-- TAB 2: ĐĂNG KÝ VAY CHUẨN LOAN_APPLICATION TABLE --%>
                 <c:when test="${currentAction == 'create_loan'}">
                     <c:choose>
                         <c:when test="${trangThaiEkyc == 'verified' && !hasActiveLoan}">
@@ -296,19 +256,23 @@
                                         <div id="currencyPreview" class="currency-preview"></div>
                                         <span class="form-hint">Hạn mức tối đa được phép vay: <strong style="color: var(--primary-color);"><fmt:formatNumber value="${hanMucToiDa}" type="number"/> đ</strong></span>
                                     </div>
+
                                     <div class="form-group">
-                                        <label for="kyHan">Kỳ hạn (Tháng)</label>
-                                        <input type="number" id="kyHan" name="termMonths" min="1" max="60" class="form-control" required>
+                                        <label for="kyHan">Kỳ hạn vay (Tháng)</label>
+                                        <input type="number" id="kyHan" name="termMonths" min="1" max="60" placeholder="Ví dụ: 6, 12, 24" class="form-control" required>
                                     </div>
+
                                     <div class="form-group">
-                                        <label for="ngayCapCic">Ngày cấp CIC cá nhân</label>
+                                        <label for="ngayCapCic">Ngày cấp file thông tin tín dụng CIC</label>
                                         <input type="date" id="ngayCapCic" name="cicIssuedDate" class="form-control" required>
                                     </div>
+
                                     <div class="form-group">
-                                        <label for="urlFileCic">Đường dẫn file PDF CIC</label>
-                                        <input type="url" id="urlFileCic" name="cicPdfUrl" placeholder="https://example.com/your-cic.pdf" class="form-control" required>
+                                        <label for="urlFileCic">Đường dẫn file PDF báo cáo CIC</label>
+                                        <input type="url" id="urlFileCic" name="cicPdfUrl" placeholder="https://example.com/your-cic-report.pdf" class="form-control" required>
                                     </div>
-                                    <button type="submit" class="btn-submit">Xác Nhận Gửi Đơn Vay</button>
+
+                                    <button type="submit" class="btn-submit">🚀 Xác Nhận Gửi Đơn Vay Lên Sàn</button>
                                 </form>
                             </div>
                         </c:when>
@@ -322,89 +286,6 @@
                     </c:choose>
                 </c:when>
 
-                <%-- TAB CHÍNH: HIỂN THỊ CẤU HÌNH 5 GÓI VAY HỆ THỐNG --%>
-                <c:when test="${currentAction == 'loan_packages'}">
-                    <div class="data-card">
-                        <h4>🎁 Danh Sách Gói Sản Phẩm Tín Dụng Hệ Thống</h4>
-                        <p style="font-size: 14px; color: #64748b; margin-bottom: 25px;">Hệ thống tự động phê duyệt hạn mức tối đa dựa trên điểm eKYC, lịch sử CIC và nguồn thu nhập thực tế của bạn.</p>
-                        
-                        <!-- GÓI 1 -->
-                        <div class="package-card">
-                            <div class="package-header">
-                                <span class="package-title">📦 Gói 1: Vay Tiêu Dùng Nhanh (Ứng lương / Mua sắm nhỏ)</span>
-                                <span class="package-limit">1.000.000 đ - 15.000.000 đ</span>
-                            </div>
-                            <div class="package-desc">Dành cho cá nhân cần tiền gấp, duyệt nhanh, hình thức tín chấp qua eKYC cơ bản.</div>
-                            <div class="sub-config-title">Các gói cấu hình kỳ hạn nhỏ:</div>
-                            <div class="sub-config-list">
-                                <div class="sub-config-item">📅 Kỳ hạn 1 tháng: Lãi suất <strong>1.0% / tháng</strong> (12.0% / năm)</div>
-                                <div class="sub-config-item">📅 Kỳ hạn 3 tháng: Lãi suất <strong>1.2% / tháng</strong> (14.4% / năm)</div>
-                                <div class="sub-config-item">📅 Kỳ hạn 6 tháng: Lãi suất <strong>1.5% / tháng</strong> (18.0% / năm)</div>
-                            </div>
-                        </div>
-
-                        <!-- GÓI 2 -->
-                        <div class="package-card">
-                            <div class="package-header">
-                                <span class="package-title">📦 Gói 2: Vay Trả Góp Linh Hoạt (Mua xe, đồ công nghệ, học phí)</span>
-                                <span class="package-limit">> 15.000.000 đ - 100.000.000 đ</span>
-                            </div>
-                            <div class="package-desc">Gói phổ thông, đòi hỏi chứng minh thu nhập tốt. Hình thức tín chấp hoặc thế chấp bằng chính tài sản mua (như ô tô nhỏ).</div>
-                            <div class="sub-config-title">Các gói cấu hình kỳ hạn nhỏ:</div>
-                            <div class="sub-config-list">
-                                <div class="sub-config-item">📅 Kỳ hạn 6 tháng: Lãi suất <strong>0.9% / tháng</strong> (10.8% / năm)</div>
-                                <div class="sub-config-item">📅 Kỳ hạn 12 tháng: Lãi suất <strong>1.1% / tháng</strong> (13.2% / năm)</div>
-                                <div class="sub-config-item">📅 Kỳ hạn 18 tháng: Lãi suất <strong>1.3% / tháng</strong> (15.6% / năm)</div>
-                            </div>
-                        </div>
-
-                        <!-- GÓI 3 -->
-                        <div class="package-card">
-                            <div class="package-header">
-                                <span class="package-title">📦 Gói 3: Vay Kinh Doanh Nhỏ / Hộ Gia Đình</span>
-                                <span class="package-limit">> 100.000.000 đ - 500.000.000 đ</span>
-                            </div>
-                            <div class="package-desc">Dành cho các chủ shop online, hộ kinh doanh cá thể cần nguồn vốn nhập hàng, quay vòng dòng tiền nhanh.</div>
-                            <div class="sub-config-title">Các gói cấu hình kỳ hạn nhỏ:</div>
-                            <div class="sub-config-list">
-                                <div class="sub-config-item">📅 Kỳ hạn 12 tháng: Lãi suất <strong>0.8% / tháng</strong> (9.6% / năm)</div>
-                                <div class="sub-config-item">📅 Kỳ hạn 24 tháng: Lãi suất <strong>1.0% / tháng</strong> (12.0% / năm)</div>
-                                <div class="sub-config-item">📅 Kỳ hạn 36 tháng: Lãi suất <strong>1.2% / tháng</strong> (14.4% / năm)</div>
-                            </div>
-                        </div>
-
-                        <!-- GÓI 4 -->
-                        <div class="package-card">
-                            <div class="package-header">
-                                <span class="package-title">📦 Gói 4: Vay Khởi Nghiệp / Doanh Nghiệp Phát Triển (SME)</span>
-                                <span class="package-limit">> 500.000.000 đ - 1.500.000.000 đ</span>
-                            </div>
-                            <div class="package-desc">Bổ sung vốn lưu động, mua sắm máy móc, thiết bị sản xuất. Yêu cầu có tài sản đảm bảo (máy móc, nhà xưởng, xe tải) hoặc báo cáo tài chính kiểm toán tốt.</div>
-                            <div class="sub-config-title">Các gói cấu hình kỳ hạn nhỏ:</div>
-                            <div class="sub-config-list">
-                                <div class="sub-config-item">📅 Kỳ hạn 12 tháng: Lãi suất <strong>0.75% / tháng</strong> (9.0% / năm)</div>
-                                <div class="sub-config-item">📅 Kỳ hạn 24 tháng: Lãi suất <strong>0.85% / tháng</strong> (10.2% / năm)</div>
-                                <div class="sub-config-item">📅 Kỳ hạn 36 tháng: Lãi suất <strong>0.95% / tháng</strong> (11.4% / năm)</div>
-                            </div>
-                        </div>
-
-                        <!-- GÓI 5 -->
-                        <div class="package-card" style="border-color: #f59e0b; background: #fffbeb;">
-                            <div class="package-header">
-                                <span class="package-title" style="color: #b45309;">💎 Gói 5: Vay Đầu Tư Bất Động Sản & Dự Án Lớn</span>
-                                <span class="package-limit" style="color: #b45309;">Hạn Mức Cao Cấp</span>
-                            </div>
-                            <div class="package-desc" style="color: #78350f;">Gói vay lớn nhất trên sàn P2P Lending. <b>Bắt buộc phải thế chấp bằng Bất động sản hợp pháp (Sổ đỏ / Sổ hồng)</b>. Quy trình thẩm định hồ sơ thực địa nghiêm ngặt qua nhiều bước bảo mật.</div>
-                            <div class="sub-config-title" style="color: #b45309;">Yêu cầu cấu hình:</div>
-                            <div class="sub-config-list">
-                                <span class="badge badge-warning" style="background:#fef3c7; color:#b45309;">Thẩm định tài sản riêng biệt</span>
-                                <span class="badge badge-warning" style="background:#fef3c7; color:#b45309;">Lãi suất thỏa thuận ưu đãi</span>
-                            </div>
-                        </div>
-
-                    </div>
-                </c:when>
-
                 <%-- TAB 3: KHOẢN VAY TRÊN SÀN --%>
                 <c:when test="${currentAction == 'market_loans'}">
                     <div class="data-card">
@@ -413,10 +294,10 @@
                             <thead>
                                 <tr>
                                     <th>MÃ ĐƠN VAY</th>
-                                    <th>MÃ NGƯỜI VAY</th>
-                                    <th>MỨC ĐỘ RỦI RO</th>
+                                    <th>NGƯỜI VAY (ẨN DANH)</th>
+                                    <th>LÃI SUẤT</th>
                                     <th>SỐ TIỀN VAY</th>
-                                    <th>KÝ HẠN</th>
+                                    <th>KỲ HẠN</th>
                                     <th>TIẾN ĐỘ GỌI VỐN</th>
                                 </tr>
                             </thead>
@@ -425,17 +306,20 @@
                                     <c:when test="${not empty marketLoansList}">
                                         <c:forEach var="loan" items="${marketLoansList}">
                                             <tr>
-                                                <td><strong><c:out value="${loan.applicationId}"/></strong></td>
-                                                <td><span style="color:#64748b;">User_<c:out value="${loan.borrowerId}"/></span></td>
-                                                <td><span style="padding:4px 8px; border-radius:4px; font-size:12px; background:#fef9c3; color:#a16207; font-weight:bold;">Mức thấp</span></td>
+                                                <td>#<strong><c:out value="${loan.applicationId}"/></strong></td>
+                                                <%-- SỬA ĐỒI: Lấy tên ẩn danh bảo mật từ DTO --%>
+                                                <td><span style="color:#475569; font-weight: 500;"><c:out value="${loan.maskedBorrowerName}"/></span></td>
+                                                <%-- SỬA ĐỒI: Show mức lãi suất ưu đãi lên sàn --%>
+                                                <td><span style="color:#3b82f6; font-weight: bold;"><c:out value="${loan.interestRate}"/>% / năm</span></td>
                                                 <td><strong><fmt:formatNumber value="${loan.amountRequested}" type="number" groupingUsed="true"/> đ</strong></td>
                                                 <td><c:out value="${loan.termMonths}"/> Tháng</td>
                                                 <td>
-                                                    <c:set var="percent" value="${not empty loan.amountRequested && loan.amountRequested gt 0 ? (loan.amountRaised * 100 / loan.amountRequested) : 0}"/>
+                                                    <%-- SỬA ĐỒI: Chuyển sang dùng hàm bổ trợ thông minh getFundingProgress() của Model mới --%>
+                                                    <c:set var="percent" value="${loan.fundingProgress}"/>
                                                     <div style="width: 80px; background: #e2e8f0; border-radius: 10px; height: 6px; display: inline-block; margin-right: 5px;">
                                                         <div style="width: ${percent}%; background: #22c55e; height: 100%; border-radius: 10px;"></div>
                                                     </div>
-                                                    <span style="font-size:12px; font-weight:bold; color:#16a34a;"><fmt:formatNumber value="${percent}" maxFractionDigits="0"/>%</span>
+                                                    <span style="font-size:12px; font-weight:bold; color:#16a34a;"><fmt:formatNumber value="${percent}" maxFractionDigits="1"/>%</span>
                                                 </td>
                                             </tr>
                                         </c:forEach>
