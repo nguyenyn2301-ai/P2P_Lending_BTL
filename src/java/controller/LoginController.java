@@ -83,7 +83,7 @@ public class LoginController extends HttpServlet {
             else if ("investor".equals(role)) {
                 // LOGIC: Đã có hồ sơ (pending, verified, rejected) -> Vào thẳng Dashboard
                 if (hasCompletedEkyc) {
-                    response.sendRedirect("InvestorDashboardServlet?action=dashboard");
+                    response.sendRedirect(request.getContextPath() + "/InvestorDashboardServlet");
                 } else {
                     // LẦN ĐẦU: Hoàn toàn chưa nộp hồ sơ eKYC -> Chuyển sang trang ekyc.jsp
                     response.sendRedirect("ekyc.jsp");

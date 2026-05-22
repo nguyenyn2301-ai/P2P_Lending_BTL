@@ -17,7 +17,7 @@ public class BorrowerDAO {
     // =========================================================================
     public Borrower getBorrowerById(long borrowerId) {
         String sql = "SELECT borrower_id, first_name, last_name, verification_status, monthly_income, " +
-                     "id_card_number FROM borrowers WHERE borrower_id = ?";
+                     "id_card_number, wallet_balance FROM borrowers WHERE borrower_id = ?";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             
@@ -41,6 +41,8 @@ public class BorrowerDAO {
                     b.setMonthlyIncome(incomeBg != null ? incomeBg.doubleValue() : 0.0);
                     
                     b.setIdCardNumber(rs.getString("id_card_number"));
+                    BigDecimal wb = rs.getBigDecimal("wallet_balance");
+                    b.setWalletBalance(wb != null ? wb.doubleValue() : 0.0);
                     return b;
                 }
             }
@@ -57,7 +59,7 @@ public class BorrowerDAO {
         double totalDebt = 0.0;
         String sql = "SELECT SUM(l.total_amount) FROM loans l " +
                      "INNER JOIN loan_applications la ON l.application_id = la.application_id " +
-                     "WHERE la.borrower_id = ? AND l.status = 'active'";
+                     "WHERE la.borrower_id = ? AND l.status IN ('process','overdue')";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             

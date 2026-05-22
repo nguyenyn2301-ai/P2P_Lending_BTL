@@ -1,0 +1,65 @@
+body.contract-page {
+    font-family: 'Times New Roman', Times, serif;
+    background: #f8fafc;
+    color: #1e293b;
+    margin: 0;
+    padding: 24px;
+}
+
+.contract-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 48px 56px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+}
+
+.contract-header { text-align: center; margin-bottom: 32px; }
+.contract-header h1 { font-size: 22px; text-transform: uppercase; margin-bottom: 8px; }
+.contract-header p { font-style: italic; }
+
+.contract-body p { line-height: 1.8; text-align: justify; margin-bottom: 12px; }
+.contract-body .highlight { font-weight: bold; }
+
+.signature-row {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 48px;
+    gap: 24px;
+}
+
+.digital-signature {
+    flex: 1;
+    border: 2px dashed #059669;
+    background-color: #ecfdf5;
+    padding: 20px;
+    text-align: center;
+    min-height: 120px;
+}
+.digital-signature h4 { margin-bottom: 12px; font-size: 14px; }
+.digital-signature .signed {
+    color: #047857;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.contract-nav {
+    text-align: center;
+    margin-bottom: 20px;
+}
+.contract-nav a, .contract-nav button {
+    margin: 0 8px;
+    padding: 8px 16px;
+    background: #2563eb;
+    color: #fff;
+    text-decoration: none;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+@media print {
+    .contract-nav, .no-print { display: none !important; }
+    body.contract-page { background: #fff; padding: 0; }
+    .contract-container { box-shadow: none; }
+}

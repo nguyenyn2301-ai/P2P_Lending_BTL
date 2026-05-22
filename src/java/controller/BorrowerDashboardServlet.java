@@ -2,6 +2,8 @@ package controller;
 
 import dao.BorrowerDAO;
 import dao.LoanDAO;
+import dao.NotificationDAO;
+import model.Notification;
 import model.LoanApplication;
 import model.Borrower;
 import jakarta.servlet.ServletException;
@@ -68,19 +70,26 @@ public class BorrowerDashboardServlet extends HttpServlet {
                 session.setAttribute("verification_status", verificationStatus);
             }
 
-            // Lấy danh sách khoản vay của chính Borrower này sử dụng bDao đã tối ưu
             List<LoanApplication> loanList = bDao.getLoansByBorrower(userId);
             boolean hasActiveLoan = false;
             if (loanList != null) {
                 for (LoanApplication loan : loanList) {
                     String status = loan.getStatus();
-                    // Khớp hoàn toàn với trạng thái tiếng Việt đã được DAO ánh xạ trực quan
                     if ("Chờ duyệt".equals(status) || "Đã duyệt".equals(status) || "Đang gọi vốn".equals(status)) {
                         hasActiveLoan = true;
                         break;
                     }
                 }
             }
+            if (!lDao.getActiveLoansByBorrower(userId).isEmpty()) {
+                hasActiveLoan = true;
+            }
+            boolean hasOverdue = false;
+            for (model.Loan active : lDao.getActiveLoansByBorrower(userId)) {
+                if ("overdue".equals(active.getStatus())) hasOverdue = true;
+            }
+
+            List<Notification> notifications = new NotificationDAO().getNotificationsByUserId(userId);
 
             // HÀNH ĐỘNG 1: Tái xác thực eKYC
             if ("re_ekyc".equals(currentAction)) {
@@ -108,7 +117,9 @@ public class BorrowerDashboardServlet extends HttpServlet {
             request.setAttribute("hanMucToiDa", maxLimit);
             request.setAttribute("tongDuNo", currentDebt);
             request.setAttribute("myLoansList", loanList);
-            request.setAttribute("hasActiveLoan", hasActiveLoan);
+            request.setAttribute("hasActiveLoan", hasActiveLoan || hasOverdue);
+            request.setAttribute("hasOverdue", hasOverdue);
+            request.setAttribute("notifications", notifications);
 
             request.getRequestDispatcher("borrower_dashboard.jsp").forward(request, response);
 

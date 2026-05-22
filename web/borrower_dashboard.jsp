@@ -8,8 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sàn P2P Lending - Bảng Điều Khiển</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/dashboard.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/layout-common.css">
 </head>
-<body>
+<body class="dashboard-wrapper">
 
     <div class="sidebar">
         <div>
@@ -23,6 +24,11 @@
                     <c:when test="${trangThaiEkyc == 'rejected'}">
                         <li class="disabled-menu" onclick="alert('Không thể đăng ký: Hồ sơ eKYC của bạn đã bị từ chối! Vui lòng thực hiện cập nhật lại hồ sơ.')">
                             <a href="javascript:void(0);">🔒 Đăng Ký Vay Mới</a>
+                        </li>
+                    </c:when>
+                    <c:when test="${hasOverdue}">
+                        <li class="disabled-menu" onclick="alert('Không thể đăng ký: Bạn có khoản vay quá hạn! Vui lòng thanh toán tại mục Trả nợ.')">
+                            <a href="javascript:void(0);">🔒 Đăng Ký Vay Mới (Quá hạn)</a>
                         </li>
                     </c:when>
                     <c:when test="${hasActiveLoan}">
@@ -39,6 +45,9 @@
 
                 <li class="${currentAction == 'market_loans' ? 'active' : ''}">
                     <a href="${pageContext.request.contextPath}/BorrowerDashboardServlet?action=market_loans">🌐 Khoản Vay Trên Sàn</a>
+                </li>
+                <li>
+                    <a href="${pageContext.request.contextPath}/RepaymentServlet">💳 Trả Nợ Theo Kỳ</a>
                 </li>
             </ul>
         </div>
@@ -335,6 +344,22 @@
             </c:choose>
         </div>
     </div>
+
+    <aside class="notification-panel">
+        <h4>🔔 Thông báo</h4>
+        <c:forEach var="n" items="${notifications}">
+            <div class="notif-item ${n.read ? '' : 'unread'}">
+                <h5><c:out value="${n.title}"/></h5>
+                <p><c:out value="${n.message}"/></p>
+                <small><fmt:formatDate value="${n.createdAt}" pattern="dd/MM/yyyy HH:mm"/></small>
+            </div>
+        </c:forEach>
+        <c:if test="${empty notifications}"><p style="color:#94a3b8;font-size:13px;">Chưa có thông báo.</p></c:if>
+    </aside>
+
+    <footer class="site-footer">Email: admin@gmail.com - Số điện thoại: 01234567891</footer>
+    <button id="backToTop" title="Lên đầu trang">↑</button>
+    <script src="${pageContext.request.contextPath}/js/back-to-top.js"></script>
 
     <script>
         window.addEventListener('DOMContentLoaded', () => {

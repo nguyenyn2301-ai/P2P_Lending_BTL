@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import dao.UserDAO;
+import model.User;
 
 @WebServlet(name = "AdminLoginServlet", urlPatterns = {"/AdminLoginServlet"})
 public class AdminLoginServlet extends HttpServlet {
@@ -26,17 +28,15 @@ public class AdminLoginServlet extends HttpServlet {
         String email = request.getParameter("email");
         String password = request.getParameter("password");
 
-        // 2. Kiểm tra tài khoản admin cứng theo yêu cầu của nhóm
-        if ("admin@gmail.com".equals(email) && "12345678".equals(password)) {
-            
-            // Đăng nhập thành công -> Khởi tạo session lưu trạng thái đăng nhập
-            HttpSession session = request.getSession();
-            session.setAttribute("adminEmail", email);
-            session.setAttribute("role", "admin");
+        UserDAO userDAO = new UserDAO();
+        User admin = userDAO.adminLogin(email, password);
 
-            // Điều hướng thẳng sang AdminDashboardServlet
-            response.sendRedirect("AdminDashboardServlet");
-            
+        if (admin != null) {
+            HttpSession session = request.getSession();
+            session.setAttribute("adminEmail", admin.getEmail());
+            session.setAttribute("adminId", admin.getUser_id());
+            session.setAttribute("role", "admin");
+            response.sendRedirect(request.getContextPath() + "/AdminDashboardServlet");
         } else {
             // Đăng nhập thất bại -> Trả về thông báo lỗi và load lại trang đăng nhập admin
             request.setAttribute("errorMessage", "Tài khoản hoặc Mật khẩu quản trị viên không đúng!");

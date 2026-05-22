@@ -1,6 +1,7 @@
 package dao; 
 
 import util.DBConnection; 
+import model.Loan;
 import model.LoanApplication; 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -108,12 +109,11 @@ public class LoanDAO {
         List<LoanApplication> list = new ArrayList<>();
         
         // Thực hiện câu lệnh JOIN 4 bảng để thu thập dữ liệu hiển thị hoàn chỉnh lên sàn công khai
-        String sql = "SELECT app.application_id, app.amount_requested, app.term_months, app.created_at, " +
-                     "       u.full_name, l.interest_rate, l.current_funded, l.status AS loan_status " +
+        String sql = "SELECT l.loan_id, app.application_id, app.amount_requested, app.term_months, app.created_at, " +
+                     "       CONCAT(b.first_name, ' ', b.last_name) AS full_name, l.interest_rate, l.current_funded, l.status AS loan_status " +
                      "FROM loans l " +
                      "INNER JOIN loan_applications app ON l.application_id = app.application_id " +
                      "INNER JOIN borrowers b ON app.borrower_id = b.borrower_id " +
-                     "INNER JOIN users u ON b.user_id = u.user_id " +
                      "WHERE l.status = 'funding' ORDER BY l.loan_id DESC";
                      
         try (Connection conn = DBConnection.getConnection();
@@ -122,12 +122,12 @@ public class LoanDAO {
             
             while (rs.next()) {
                 LoanApplication loan = new LoanApplication();
+                loan.setLoanId(rs.getLong("loan_id"));
                 loan.setApplicationId(rs.getLong("application_id"));
                 loan.setAmountRequested(rs.getBigDecimal("amount_requested"));
                 loan.setTermMonths(rs.getInt("term_months"));
                 loan.setCreatedAt(rs.getTimestamp("created_at"));
                 
-                // Xử lý ẩn danh tên (Ví dụ: "Hà Phương Linh" -> H****** Linh) để bảo mật trên sàn công khai
                 String fullName = rs.getString("full_name");
                 loan.setMaskedBorrowerName(maskName(fullName));
                 
@@ -194,8 +194,8 @@ public class LoanDAO {
         String sqlUpdateApp = "UPDATE loan_applications SET status = ? WHERE application_id = ?";
         
         // Cải tiến an toàn: Chỉ chèn sang bảng loans nếu đơn đó chưa từng được chèn trước đây (Tránh lỗi nhấn đúp/F5 của Admin)
-        String sqlInsertLoan = "INSERT INTO loans (application_id, total_amount, current_funded, interest_rate, status, updated_at) " +
-                              "SELECT application_id, amount_requested, ?, ?, 'funding', NOW() " +
+        String sqlInsertLoan = "INSERT INTO loans (application_id, total_amount, current_funded, interest_rate, status, funding_deadline, updated_at) " +
+                              "SELECT application_id, amount_requested, ?, ?, 'funding', DATE_ADD(CURDATE(), INTERVAL 30 DAY), NOW() " +
                               "FROM loan_applications " +
                               "WHERE application_id = ? AND NOT EXISTS (SELECT 1 FROM loans WHERE application_id = ?)";
         
@@ -262,5 +262,348 @@ public class LoanDAO {
         }
         masked.append(" ").append(parts[parts.length - 1]);
         return masked.toString();
+    }
+
+    // =========================================================================
+    // PHẦN BỔ SUNG: QUẢN LÝ GÓI VAY, GỌI VỐN, TRẢ NỢ (THÊM MỚI)
+    // =========================================================================
+
+    public Loan getLoanById(long loanId) {
+        String sql = "SELECT l.*, la.term_months, la.borrower_id, la.interest_rate AS app_rate, "
+                + "CONCAT(b.first_name, ' ', b.last_name) AS borrower_name, u.email AS borrower_email "
+                + "FROM loans l "
+                + "INNER JOIN loan_applications la ON l.application_id = la.application_id "
+                + "INNER JOIN borrowers b ON la.borrower_id = b.borrower_id "
+                + "INNER JOIN users u ON b.borrower_id = u.user_id "
+                + "WHERE l.loan_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, loanId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return mapLoanRow(rs);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public boolean addCurrentFunded(long loanId, BigDecimal amount) {
+        String sql = "UPDATE loans SET current_funded = current_funded + ? WHERE loan_id = ? "
+                + "AND current_funded + ? <= total_amount";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setBigDecimal(1, amount);
+            ps.setLong(2, loanId);
+            ps.setBigDecimal(3, amount);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean markFullyFunded(long loanId) {
+        Loan loan = getLoanById(loanId);
+        if (loan == null || !loan.isFullyFunded()) return false;
+        String sql = "UPDATE loans SET status = 'process', funding_deadline = NULL WHERE loan_id = ? AND status = 'funding'";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, loanId);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean disburseLoan(long loanId) {
+        Connection conn = null;
+        try {
+            Loan loan = getLoanById(loanId);
+            if (loan == null) return false;
+            if (loan.isFullyFunded() && "funding".equals(loan.getStatus())) {
+                markFullyFunded(loanId);
+                loan = getLoanById(loanId);
+            }
+            if (loan == null || !loan.isFullyFunded() || "completed".equals(loan.getStatus())) return false;
+            if (!"process".equals(loan.getStatus()) && !"funding".equals(loan.getStatus())) return false;
+
+            BigDecimal total = loan.getTotalAmount();
+            BigDecimal fee = total.multiply(new BigDecimal("0.10"));
+            BigDecimal disbursed = total.subtract(fee);
+
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            String sqlLoan = "UPDATE loans SET status = 'process', service_fee = ?, actual_disbursed = ?, "
+                    + "due_date = DATE_ADD(CURDATE(), INTERVAL 1 MONTH), paid_periods = 0 WHERE loan_id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sqlLoan)) {
+                ps.setBigDecimal(1, fee);
+                ps.setBigDecimal(2, disbursed);
+                ps.setLong(3, loanId);
+                ps.executeUpdate();
+            }
+
+            InvestmentDAO invDao = new InvestmentDAO();
+            for (model.Investment inv : invDao.getByLoanId(loanId)) {
+                String sqlFrozen = "UPDATE investors SET frozen_balance = frozen_balance - ? WHERE investor_id = ? AND frozen_balance >= ?";
+                try (PreparedStatement ps = conn.prepareStatement(sqlFrozen)) {
+                    ps.setBigDecimal(1, inv.getAmountInvested());
+                    ps.setLong(2, inv.getInvestorId());
+                    ps.setBigDecimal(3, inv.getAmountInvested());
+                    ps.executeUpdate();
+                }
+            }
+
+            String sqlBorrower = "UPDATE borrowers SET wallet_balance = wallet_balance + ? WHERE borrower_id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sqlBorrower)) {
+                ps.setBigDecimal(1, disbursed);
+                ps.setLong(2, loan.getBorrowerId());
+                ps.executeUpdate();
+            }
+
+            TransactionDAO txDao = new TransactionDAO();
+            txDao.insertTransaction(loan.getBorrowerId(), disbursed, "disbursement", "completed");
+            txDao.insertTransaction(loan.getBorrowerId(), fee, "service_fee_deducted", "completed");
+
+            NotificationDAO notifDao = new NotificationDAO();
+            notifDao.addNotification(loan.getBorrowerId(), "Giải ngân thành công",
+                    "Gói vay #" + loanId + " đã giải ngân " + disbursed + " VNĐ (đã trừ 10% phí sàn).");
+
+            conn.commit();
+            return true;
+        } catch (Exception e) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            e.printStackTrace();
+        } finally {
+            if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (Exception e) {}
+        }
+        return false;
+    }
+
+    public List<Loan> getLoansByStatus(String status) {
+        return getLoansFiltered(status, null);
+    }
+
+    public List<Loan> getFundingLoansCurrent() {
+        String sql = "SELECT l.*, la.term_months, la.borrower_id, la.interest_rate AS app_rate, "
+                + "CONCAT(b.first_name, ' ', b.last_name) AS borrower_name, u.email AS borrower_email "
+                + "FROM loans l INNER JOIN loan_applications la ON l.application_id = la.application_id "
+                + "INNER JOIN borrowers b ON la.borrower_id = b.borrower_id "
+                + "INNER JOIN users u ON b.borrower_id = u.user_id "
+                + "WHERE l.status = 'funding' AND (l.funding_deadline IS NULL OR l.funding_deadline >= CURDATE()) "
+                + "AND l.current_funded < l.total_amount ORDER BY l.loan_id DESC";
+        return queryLoanList(sql);
+    }
+
+    public List<Loan> getExpiredFundingLoans() {
+        String sql = "SELECT l.*, la.term_months, la.borrower_id, la.interest_rate AS app_rate, "
+                + "CONCAT(b.first_name, ' ', b.last_name) AS borrower_name, u.email AS borrower_email "
+                + "FROM loans l INNER JOIN loan_applications la ON l.application_id = la.application_id "
+                + "INNER JOIN borrowers b ON la.borrower_id = b.borrower_id "
+                + "INNER JOIN users u ON b.borrower_id = u.user_id "
+                + "WHERE l.status IN ('funding','failed') AND l.current_funded < l.total_amount "
+                + "AND (l.funding_deadline < CURDATE() OR (l.funding_deadline IS NULL AND l.updated_at < DATE_SUB(CURDATE(), INTERVAL 30 DAY))) "
+                + "ORDER BY l.loan_id DESC";
+        return queryLoanList(sql);
+    }
+
+    public List<Loan> getProcessingLoans() {
+        return getLoansFiltered("process", null);
+    }
+
+    public List<Loan> getCompletedLoans() {
+        return getLoansFiltered("completed", null);
+    }
+
+    public List<Loan> getOverdueLoans() {
+        return getLoansFiltered("overdue", null);
+    }
+
+    public List<Loan> getLoansAwaitingClosure() {
+        String sql = "SELECT l.*, la.term_months, la.borrower_id, la.interest_rate AS app_rate, "
+                + "CONCAT(b.first_name, ' ', b.last_name) AS borrower_name, u.email AS borrower_email "
+                + "FROM loans l INNER JOIN loan_applications la ON l.application_id = la.application_id "
+                + "INNER JOIN borrowers b ON la.borrower_id = b.borrower_id "
+                + "INNER JOIN users u ON b.borrower_id = u.user_id "
+                + "WHERE l.borrower_confirmed = TRUE AND l.status = 'process' ORDER BY l.loan_id DESC";
+        return queryLoanList(sql);
+    }
+
+    private List<Loan> getLoansFiltered(String status, String extra) {
+        String sql = "SELECT l.*, la.term_months, la.borrower_id, la.interest_rate AS app_rate, "
+                + "CONCAT(b.first_name, ' ', b.last_name) AS borrower_name, u.email AS borrower_email "
+                + "FROM loans l INNER JOIN loan_applications la ON l.application_id = la.application_id "
+                + "INNER JOIN borrowers b ON la.borrower_id = b.borrower_id "
+                + "INNER JOIN users u ON b.borrower_id = u.user_id "
+                + "WHERE l.status = ? ORDER BY l.loan_id DESC";
+        List<Loan> list = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, status);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(mapLoanRow(rs));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    private List<Loan> queryLoanList(String sql) {
+        List<Loan> list = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) list.add(mapLoanRow(rs));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public List<Loan> getActiveLoansByBorrower(long borrowerId) {
+        String sql = "SELECT l.*, la.term_months, la.borrower_id, la.interest_rate AS app_rate, "
+                + "CONCAT(b.first_name, ' ', b.last_name) AS borrower_name, u.email AS borrower_email "
+                + "FROM loans l INNER JOIN loan_applications la ON l.application_id = la.application_id "
+                + "INNER JOIN borrowers b ON la.borrower_id = b.borrower_id "
+                + "INNER JOIN users u ON b.borrower_id = u.user_id "
+                + "WHERE la.borrower_id = ? AND l.status IN ('process','overdue') ORDER BY l.loan_id DESC";
+        List<Loan> list = new ArrayList<>();
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, borrowerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) list.add(mapLoanRow(rs));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public boolean updateLoanStatusById(long loanId, String status) {
+        String sql = "UPDATE loans SET status = ? WHERE loan_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, status);
+            ps.setLong(2, loanId);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean advanceRepaymentPeriod(long loanId, int newPaidPeriods, java.sql.Date nextDueDate, String newStatus) {
+        String sql = "UPDATE loans SET paid_periods = ?, due_date = ?, status = ? WHERE loan_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, newPaidPeriods);
+            ps.setDate(2, nextDueDate);
+            ps.setString(3, newStatus);
+            ps.setLong(4, loanId);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean setFundingDeadlineOnCreate(long applicationId) {
+        String sql = "UPDATE loans SET funding_deadline = DATE_ADD(CURDATE(), INTERVAL 30 DAY) WHERE application_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, applicationId);
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean approvePendingInvestment(long investmentId) {
+        InvestmentDAO invDao = new InvestmentDAO();
+        model.Investment inv = invDao.getById(investmentId);
+        if (inv == null || !"pending".equals(inv.getStatus())) return false;
+
+        Connection conn = null;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            InvestorDAO investorDAO = new InvestorDAO();
+            if (!investorDAO.deductWalletAndAddFrozen(inv.getInvestorId(), inv.getAmountInvested())) {
+                conn.rollback();
+                return false;
+            }
+
+            String sqlFund = "UPDATE loans SET current_funded = current_funded + ? WHERE loan_id = ? "
+                    + "AND current_funded + ? <= total_amount";
+            try (PreparedStatement ps = conn.prepareStatement(sqlFund)) {
+                ps.setBigDecimal(1, inv.getAmountInvested());
+                ps.setLong(2, inv.getLoanId());
+                ps.setBigDecimal(3, inv.getAmountInvested());
+                if (ps.executeUpdate() <= 0) {
+                    conn.rollback();
+                    return false;
+                }
+            }
+
+            String sqlInv = "UPDATE investments SET status = 'completed' WHERE investment_id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sqlInv)) {
+                ps.setLong(1, investmentId);
+                ps.executeUpdate();
+            }
+
+            conn.commit();
+
+            Loan loan = getLoanById(inv.getLoanId());
+            if (loan != null && loan.isFullyFunded()) {
+                markFullyFunded(inv.getLoanId());
+                NotificationDAO notif = new NotificationDAO();
+                notif.addNotification(loan.getBorrowerId(), "Gọi vốn thành công",
+                        "Gói vay #" + inv.getLoanId() + " đã gom đủ 100% vốn, chuyển sang gói đang xử lý.");
+            }
+            return true;
+        } catch (Exception e) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            e.printStackTrace();
+        } finally {
+            if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (Exception e) {}
+        }
+        return false;
+    }
+
+    public boolean markLoanAwaitingClosure(long loanId) {
+        return updateLoanStatusById(loanId, "completed");
+    }
+
+    public boolean closeLoanPackage(long loanId) {
+        return updateLoanStatusById(loanId, "completed");
+    }
+
+    private Loan mapLoanRow(ResultSet rs) throws SQLException {
+        Loan l = new Loan();
+        l.setLoanId(rs.getLong("loan_id"));
+        l.setApplicationId(rs.getLong("application_id"));
+        l.setLoanCode(rs.getString("loan_code"));
+        l.setTotalAmount(rs.getBigDecimal("total_amount"));
+        l.setCurrentFunded(rs.getBigDecimal("current_funded"));
+        l.setInterestRate(rs.getBigDecimal("interest_rate"));
+        l.setServiceFee(rs.getBigDecimal("service_fee"));
+        l.setActualDisbursed(rs.getBigDecimal("actual_disbursed"));
+        l.setStatus(rs.getString("status"));
+        l.setBorrowerConfirmed(rs.getBoolean("borrower_confirmed"));
+        l.setInvestorConfirmed(rs.getBoolean("investor_confirmed"));
+        try { l.setDueDate(rs.getDate("due_date")); } catch (SQLException ignored) {}
+        try { l.setPaidPeriods(rs.getInt("paid_periods")); } catch (SQLException ignored) {}
+        try { l.setTermMonths(rs.getInt("term_months")); } catch (SQLException ignored) {}
+        try { l.setBorrowerId(rs.getLong("borrower_id")); } catch (SQLException ignored) {}
+        try { l.setBorrowerName(rs.getString("borrower_name")); } catch (SQLException ignored) {}
+        try { l.setBorrowerEmail(rs.getString("borrower_email")); } catch (SQLException ignored) {}
+        l.setUpdatedAt(rs.getTimestamp("updated_at"));
+        return l;
     }
 }

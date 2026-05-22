@@ -7,6 +7,7 @@ import java.sql.Timestamp;
 public class LoanApplication {
     // 1. CÁC TRƯỜNG DỮ LIỆU CỐT LÕI (Khớp 100% với bảng loan_applications trong DB)
     private long applicationId;
+    private long loanId;
     private long borrowerId;
     private BigDecimal amountRequested; // Đổi sang BigDecimal để tránh sai số tiền tệ tài chính
     private int termMonths;
@@ -56,6 +57,9 @@ public class LoanApplication {
     // =========================================================================
     public long getApplicationId() { return applicationId; }
     public void setApplicationId(long applicationId) { this.applicationId = applicationId; }
+
+    public long getLoanId() { return loanId; }
+    public void setLoanId(long loanId) { this.loanId = loanId; }
 
     public long getBorrowerId() { return borrowerId; }
     public void setBorrowerId(long borrowerId) { this.borrowerId = borrowerId; }

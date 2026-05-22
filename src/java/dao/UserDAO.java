@@ -6,6 +6,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 public class UserDAO {
 
@@ -272,5 +274,127 @@ public class UserDAO {
             e.printStackTrace();
         }
         return false;
+    }
+
+    // =========================================================================
+    // PHẦN 4: ADMIN & QUẢN LÝ NGƯỜI DÙNG (THÊM MỚI)
+    // =========================================================================
+
+    public User adminLogin(String email, String password) {
+        String sql = "SELECT user_id, email, role FROM users WHERE email = ? AND password = ? AND role = 'admin'";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ps.setString(2, password);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    User user = new User();
+                    user.setUser_id(rs.getLong("user_id"));
+                    user.setEmail(rs.getString("email"));
+                    user.setRole(rs.getString("role"));
+                    return user;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public List<java.util.Map<String, Object>> getPendingEkycUsers() {
+        List<java.util.Map<String, Object>> list = new ArrayList<>();
+        String sqlBorrower = "SELECT u.user_id, u.email, u.role, u.created_at, b.first_name, b.last_name, b.verification_status "
+                + "FROM users u INNER JOIN borrowers b ON u.user_id = b.borrower_id WHERE b.verification_status = 'pending' AND u.role = 'borrower'";
+        String sqlInvestor = "SELECT u.user_id, u.email, u.role, u.created_at, i.first_name, i.last_name, i.verification_status "
+                + "FROM users u INNER JOIN investors i ON u.user_id = i.investor_id WHERE i.verification_status = 'pending' AND u.role = 'investor'";
+        try (Connection conn = DBConnection.getConnection()) {
+            appendEkycRows(conn, sqlBorrower, list);
+            appendEkycRows(conn, sqlInvestor, list);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    private void appendEkycRows(Connection conn, String sql, List<java.util.Map<String, Object>> list) throws Exception {
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                java.util.Map<String, Object> m = new java.util.HashMap<>();
+                m.put("userId", rs.getLong("user_id"));
+                m.put("email", rs.getString("email"));
+                m.put("role", rs.getString("role"));
+                m.put("fullName", rs.getString("first_name") + " " + rs.getString("last_name"));
+                m.put("verificationStatus", rs.getString("verification_status"));
+                m.put("createdAt", rs.getTimestamp("created_at"));
+                list.add(m);
+            }
+        }
+    }
+
+    public List<java.util.Map<String, Object>> getAllUsersByRole(String roleFilter) {
+        List<java.util.Map<String, Object>> list = new ArrayList<>();
+        String base = "SELECT u.user_id, u.email, u.role, u.status, u.created_at FROM users u WHERE u.role != 'admin'";
+        if (roleFilter != null && !roleFilter.isEmpty() && !"all".equalsIgnoreCase(roleFilter)) {
+            base += " AND u.role = ?";
+        }
+        base += " ORDER BY u.created_at DESC";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(base)) {
+            if (roleFilter != null && !roleFilter.isEmpty() && !"all".equalsIgnoreCase(roleFilter)) {
+                ps.setString(1, roleFilter);
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    java.util.Map<String, Object> m = new java.util.HashMap<>();
+                    long uid = rs.getLong("user_id");
+                    m.put("userId", uid);
+                    m.put("email", rs.getString("email"));
+                    m.put("role", rs.getString("role"));
+                    m.put("status", rs.getString("status"));
+                    m.put("createdAt", rs.getTimestamp("created_at"));
+                    m.put("profileDetail", getProfileDetail(conn, uid, rs.getString("role")));
+                    list.add(m);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    private String getProfileDetail(Connection conn, long userId, String role) throws Exception {
+        if ("borrower".equals(role)) {
+            String sql = "SELECT first_name, last_name, verification_status, monthly_income, wallet_balance FROM borrowers WHERE borrower_id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, userId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getString("first_name") + " " + rs.getString("last_name")
+                                + " | eKYC: " + rs.getString("verification_status")
+                                + " | Thu nhập: " + rs.getBigDecimal("monthly_income")
+                                + " | Ví: " + rs.getBigDecimal("wallet_balance");
+                    }
+                }
+            }
+        } else if ("investor".equals(role)) {
+            String sql = "SELECT first_name, last_name, verification_status, wallet_balance, frozen_balance FROM investors WHERE investor_id = ?";
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setLong(1, userId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getString("first_name") + " " + rs.getString("last_name")
+                                + " | eKYC: " + rs.getString("verification_status")
+                                + " | Ví: " + rs.getBigDecimal("wallet_balance")
+                                + " | Đóng băng: " + rs.getBigDecimal("frozen_balance");
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
+    public boolean updateUserVerification(long userId, String status) {
+        return updateOrInsertEkycStatus(userId, status);
     }
 }
