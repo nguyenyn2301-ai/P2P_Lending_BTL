@@ -145,6 +145,22 @@ public class UserDAO {
         return false;
     }
 
+    public String getUserAccountStatus(long userId) {
+        String sql = "SELECT status FROM users WHERE user_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("status");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public String getEkycStatus(long userId) {
         String sqlRole = "SELECT role FROM users WHERE user_id = ?";
         String sqlBorrower = "SELECT verification_status FROM borrowers WHERE borrower_id = ?";
@@ -225,10 +241,6 @@ public class UserDAO {
         }
         return false;
     }
-
-    /**
-     * Giữ lại hàm cũ để tránh lỗi liên đới nếu các chức năng khác trong hệ thống của bạn đang gọi.
-     */
     public boolean insertDocument(Long userId, String type, String url) {
         String sql = "INSERT INTO documents (user_id, document_type, file_url) VALUES (?, ?, ?)";
         try (Connection conn = DBConnection.getConnection();
@@ -277,7 +289,7 @@ public class UserDAO {
     }
 
     // =========================================================================
-    // PHẦN 4: ADMIN & QUẢN LÝ NGƯỜI DÙNG (THÊM MỚI)
+    // PHẦN 4: ADMIN & QUẢN LÝ NGƯỜI DÙNG 
     // =========================================================================
 
     public User adminLogin(String email, String password) {
@@ -301,12 +313,43 @@ public class UserDAO {
         return null;
     }
 
+    public long getAdminUserId() {
+        String sql = "SELECT user_id FROM users WHERE role = 'admin' ORDER BY user_id ASC LIMIT 1";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getLong("user_id");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return -1;
+    }
+
     public List<java.util.Map<String, Object>> getPendingEkycUsers() {
         List<java.util.Map<String, Object>> list = new ArrayList<>();
-        String sqlBorrower = "SELECT u.user_id, u.email, u.role, u.created_at, b.first_name, b.last_name, b.verification_status "
-                + "FROM users u INNER JOIN borrowers b ON u.user_id = b.borrower_id WHERE b.verification_status = 'pending' AND u.role = 'borrower'";
-        String sqlInvestor = "SELECT u.user_id, u.email, u.role, u.created_at, i.first_name, i.last_name, i.verification_status "
-                + "FROM users u INNER JOIN investors i ON u.user_id = i.investor_id WHERE i.verification_status = 'pending' AND u.role = 'investor'";
+        
+        String sqlBorrower = "SELECT u.user_id, u.email, u.role, u.created_at, b.first_name, b.last_name, b.verification_status, "
+                + "MAX(CASE WHEN d.document_type = 'id_card_front' THEN d.file_url END) as frontImg, "
+                + "MAX(CASE WHEN d.document_type = 'id_card_back' THEN d.file_url END) as backImg, "
+                + "MAX(CASE WHEN d.document_type = 'other' THEN d.file_url END) as selfieImg "
+                + "FROM users u "
+                + "INNER JOIN borrowers b ON u.user_id = b.borrower_id "
+                + "LEFT JOIN documents d ON u.user_id = d.user_id "
+                + "WHERE b.verification_status = 'pending' AND u.role = 'borrower' "
+                + "GROUP BY u.user_id, u.email, u.role, u.created_at, b.first_name, b.last_name, b.verification_status";
+                
+        String sqlInvestor = "SELECT u.user_id, u.email, u.role, u.created_at, i.first_name, i.last_name, i.verification_status, "
+                + "MAX(CASE WHEN d.document_type = 'id_card_front' THEN d.file_url END) as frontImg, "
+                + "MAX(CASE WHEN d.document_type = 'id_card_back' THEN d.file_url END) as backImg, "
+                + "MAX(CASE WHEN d.document_type = 'other' THEN d.file_url END) as selfieImg "
+                + "FROM users u "
+                + "INNER JOIN investors i ON u.user_id = i.investor_id "
+                + "LEFT JOIN documents d ON u.user_id = d.user_id "
+                + "WHERE i.verification_status = 'pending' AND u.role = 'investor' "
+                + "GROUP BY u.user_id, u.email, u.role, u.created_at, i.first_name, i.last_name, i.verification_status";
+                
         try (Connection conn = DBConnection.getConnection()) {
             appendEkycRows(conn, sqlBorrower, list);
             appendEkycRows(conn, sqlInvestor, list);
@@ -314,6 +357,62 @@ public class UserDAO {
             e.printStackTrace();
         }
         return list;
+    }
+
+    public List<String> getEkycFilePathsByUserId(long userId) {
+        List<String> paths = new ArrayList<>();
+        String sql = "SELECT file_url FROM documents WHERE user_id = ? "
+                + "AND document_type IN ('id_card_front', 'id_card_back', 'other')";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String url = rs.getString("file_url");
+                    if (url != null && !url.trim().isEmpty()) {
+                        paths.add(url);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return paths;
+    }
+
+    public List<java.util.Map<String, Object>> getEkycDocumentsByUserId(long userId) {
+        List<java.util.Map<String, Object>> list = new ArrayList<>();
+        String sql = "SELECT document_type, file_url, uploaded_at FROM documents WHERE user_id = ? "
+                + "AND document_type IN ('id_card_front', 'id_card_back', 'other') ORDER BY document_type";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    java.util.Map<String, Object> m = new java.util.HashMap<>();
+                    m.put("documentType", rs.getString("document_type"));
+                    m.put("fileUrl", rs.getString("file_url"));
+                    m.put("uploadedAt", rs.getTimestamp("uploaded_at"));
+                    list.add(m);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public boolean deleteEkycDocumentsForUser(long userId) {
+        String sql = "DELETE FROM documents WHERE user_id = ? "
+                + "AND document_type IN ('id_card_front', 'id_card_back', 'other')";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            return ps.executeUpdate() >= 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 
     private void appendEkycRows(Connection conn, String sql, List<java.util.Map<String, Object>> list) throws Exception {
@@ -327,6 +426,11 @@ public class UserDAO {
                 m.put("fullName", rs.getString("first_name") + " " + rs.getString("last_name"));
                 m.put("verificationStatus", rs.getString("verification_status"));
                 m.put("createdAt", rs.getTimestamp("created_at"));
+                
+                m.put("frontImg", rs.getString("frontImg"));
+                m.put("backImg", rs.getString("backImg"));
+                m.put("selfieImg", rs.getString("selfieImg"));
+                
                 list.add(m);
             }
         }
@@ -396,5 +500,99 @@ public class UserDAO {
 
     public boolean updateUserVerification(long userId, String status) {
         return updateOrInsertEkycStatus(userId, status);
+    }
+
+    /**
+     * Xóa tài khoản người dùng (borrower/investor). Không xóa admin.
+     */
+    public boolean deleteUser(long userId) {
+        String roleSql = "SELECT role FROM users WHERE user_id = ?";
+        Connection conn = null;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            String role = null;
+            try (PreparedStatement ps = conn.prepareStatement(roleSql)) {
+                ps.setLong(1, userId);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) return false;
+                    role = rs.getString("role");
+                }
+            }
+            if (role == null || "admin".equals(role)) {
+                return false;
+            }
+
+            if ("borrower".equals(role)) {
+                deleteBorrowerData(conn, userId);
+            } else if ("investor".equals(role)) {
+                deleteInvestorData(conn, userId);
+            }
+
+            execUpdate(conn, "DELETE FROM transactions WHERE user_id = ?", userId);
+            execUpdate(conn, "DELETE FROM notifications WHERE user_id = ?", userId);
+            execUpdate(conn, "DELETE FROM documents WHERE user_id = ?", userId);
+            execUpdate(conn, "DELETE FROM bank_accounts WHERE user_id = ?", userId);
+
+            if ("borrower".equals(role)) {
+                execUpdate(conn, "DELETE FROM borrowers WHERE borrower_id = ?", userId);
+            } else {
+                execUpdate(conn, "DELETE FROM investors WHERE investor_id = ?", userId);
+            }
+            execUpdate(conn, "DELETE FROM users WHERE user_id = ? AND role != 'admin'", userId);
+
+            conn.commit();
+            return true;
+        } catch (Exception e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (Exception ex) { ex.printStackTrace(); }
+            }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (conn != null) {
+                try { conn.setAutoCommit(true); conn.close(); } catch (Exception e) { e.printStackTrace(); }
+            }
+        }
+    }
+
+    private void deleteBorrowerData(Connection conn, long borrowerId) throws Exception {
+        String appsSql = "SELECT application_id FROM loan_applications WHERE borrower_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(appsSql)) {
+            ps.setLong(1, borrowerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    long appId = rs.getLong("application_id");
+                    deleteLoansByApplication(conn, appId);
+                    execUpdate(conn, "DELETE FROM loan_applications WHERE application_id = ?", appId);
+                }
+            }
+        }
+    }
+
+    private void deleteInvestorData(Connection conn, long investorId) throws Exception {
+        execUpdate(conn, "DELETE FROM investments WHERE investor_id = ?", investorId);
+    }
+
+    private void deleteLoansByApplication(Connection conn, long applicationId) throws Exception {
+        String loansSql = "SELECT loan_id FROM loans WHERE application_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(loansSql)) {
+            ps.setLong(1, applicationId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    long loanId = rs.getLong("loan_id");
+                    execUpdate(conn, "DELETE FROM investments WHERE loan_id = ?", loanId);
+                    execUpdate(conn, "DELETE FROM loans WHERE loan_id = ?", loanId);
+                }
+            }
+        }
+    }
+
+    private void execUpdate(Connection conn, String sql, long id) throws Exception {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, id);
+            ps.executeUpdate();
+        }
     }
 }

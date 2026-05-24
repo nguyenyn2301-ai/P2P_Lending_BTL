@@ -3,29 +3,31 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/model/LoanApplication.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/dao/LoanDAO.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/util/DBConnection.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/web/WEB-INF/web.xml</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/web/META-INF/context.xml</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/controller/BorrowerDashboardServlet.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/dao/BorrowerDAO.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/web/borrower_dashboard.jsp</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/model/Borrower.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/dao/UserDAO.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/controller/LoginController.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/controller/RegisterController.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/web/register.jsp</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/web/login.jsp</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/model/User.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/web/index.jsp</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/web/ekyc.jsp</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/controller/EKycController.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/controller/LogoutController.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/web/admin_login.jsp</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/controller/AdminLoginServlet.java</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/web/css/dashboard.css</file>
-            <file>file:/D:/Lập%20trình%20web%20BTL/P2P_Lending/src/java/util/LoanProductConfig.java</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/admin_login.jsp</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/src/java/util/DBConnection.java</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/nbproject/build-impl.xml</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/WEB-INF/web.xml</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/META-INF/context.xml</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/src/java/dao/UserDAO.java</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/admin_dashboard.jsp</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/src/java/controller/AdminDashboardServlet.java</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/borrower_dashboard.jsp</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/src/java/controller/ContractServlet.java</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/src/java/controller/EKycController.java</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/src/java/controller/BorrowerDashboardServlet.java</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/src/java/dao/LoanDAO.java</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/src/java/controller/AdminLoanApprovalServlet.java</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/css/admin.css</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/css/contract.css</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/css/dashboard.css</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/css/layout-common.css</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/js/back-to-top.js</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/terms.jsp</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/register.jsp</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/login.jsp</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/src/java/controller/RepaymentServlet.java</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/repayment.jsp</file>
+            <file>file:/C:/Users/HAI%20YEN/Desktop/Lập%20trình%20web%20BTL/p2p_lending/P2P_Lending/web/ekyc.jsp</file>
         </group>
     </open-files>
 </project-private>

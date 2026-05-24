@@ -79,7 +79,11 @@
 <div class="login-box">
     <h2>Đăng Nhập P2P</h2>
 
-    <%-- Hiển thị thông báo lỗi linh hoạt gửi từ Controller --%>
+    <% if ("registered".equals(request.getParameter("success"))) { %>
+        <div class="error-msg" style="background-color:#d1e7dd;color:#0f5132;border-color:#badbcc;">
+            <i class="fa-solid fa-circle-check"></i> Đăng ký thành công. Vui lòng đăng nhập để nộp hồ sơ eKYC (nếu chưa hoàn tất).
+        </div>
+    <% } %>
     <% if (request.getAttribute("errorMessage") != null) { %>
         <div class="error-msg">
             <i class="fa-solid fa-circle-exclamation"></i> 

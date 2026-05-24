@@ -1,11 +1,13 @@
 package controller;
 
 import dao.UserDAO;
+import model.User;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 
 @WebServlet("/RegisterController")
@@ -26,6 +28,12 @@ public class RegisterController extends HttpServlet {
         String role = request.getParameter("role"); // 'borrower' hoặc 'investor'
         String firstName = request.getParameter("firstName");
         String lastName = request.getParameter("lastName");
+        String agreeTerms = request.getParameter("agreeTerms");
+
+        if (!"on".equals(agreeTerms)) {
+            response.sendRedirect("register.jsp?error=terms");
+            return;
+        }
 
         // 1. Kiểm tra các trường thông tin chung bắt buộc
         if (email == null || password == null || confirmPassword == null || role == null || firstName == null || lastName == null
@@ -41,7 +49,7 @@ public class RegisterController extends HttpServlet {
             return;
         }
 
-        // 3. ĐỒNG BỘ: Kiểm tra trùng lặp email trước khi chèn vào DB
+        // 3. Kiểm tra trùng lặp email trước khi chèn vào DB
         if (userDAO.checkEmailExist(email.trim())) {
             response.sendRedirect("register.jsp?error=emailExist");
             return;
@@ -68,7 +76,6 @@ public class RegisterController extends HttpServlet {
                     return;
                 }
 
-                // Gọi hàm gộp của UserDAO (các trường investor truyền null)
                 registerStatus = userDAO.registerUser(email.trim(), password, role, firstName.trim(), lastName.trim(), idCardNumber.trim(), monthlyIncome, null);
 
             } else if ("investor".equals(role)) {
@@ -79,7 +86,6 @@ public class RegisterController extends HttpServlet {
                     return;
                 }
 
-                // Gọi hàm gộp của UserDAO (các trường borrower truyền null/0)
                 registerStatus = userDAO.registerUser(email.trim(), password, role, firstName.trim(), lastName.trim(), null, 0.0, riskAppetite.trim());
             }
             
@@ -89,8 +95,17 @@ public class RegisterController extends HttpServlet {
             return;
         }
 
-        // 5. Kiểm tra kết quả lưu Database để chuyển hướng
         if (registerStatus) {
+            User newUser = userDAO.loginCheck(email.trim(), password);
+            if (newUser != null) {
+                HttpSession session = request.getSession(true);
+                session.setAttribute("userId", newUser.getUser_id());
+                session.setAttribute("email", newUser.getEmail());
+                session.setAttribute("role", newUser.getRole());
+                session.setAttribute("verification_status", "pending");
+                response.sendRedirect(request.getContextPath() + "/ekyc.jsp?step=profile");
+                return;
+            }
             response.sendRedirect("login.jsp?success=registered");
         } else {
             response.sendRedirect("register.jsp?error=failed");

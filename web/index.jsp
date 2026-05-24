@@ -77,7 +77,7 @@
         </a>
         
         <div class="admin-section">
-            <a href="admin_login.jsp" class="btn btn-admin">
+            <a href="login.jsp" class="btn btn-admin">
                 <i class="fa-solid fa-user-gear"></i> Cổng Quản Trị (Admin)
             </a>
         </div>

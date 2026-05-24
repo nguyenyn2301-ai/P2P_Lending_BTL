@@ -25,7 +25,6 @@ public class LoginController extends HttpServlet {
         String email = request.getParameter("email");
         String password = request.getParameter("password");
 
-        // 1. Kiểm tra dữ liệu rỗng đầu vào
         if (email == null || password == null || email.trim().isEmpty() || password.trim().isEmpty()) {
             request.setAttribute("errorMessage", "Vui lòng điền đầy đủ thông tin!");
             request.getRequestDispatcher("login.jsp").forward(request, response);
@@ -34,7 +33,6 @@ public class LoginController extends HttpServlet {
 
         String trimmedEmail = email.trim();
 
-        // 2. Kiểm tra tài khoản đã đăng ký hay chưa
         boolean isEmailExist = userDAO.checkEmailExist(trimmedEmail); 
         
         if (!isEmailExist) {
@@ -44,48 +42,52 @@ public class LoginController extends HttpServlet {
             return; 
         }
 
-        // 3. Thực hiện kiểm tra đăng nhập bằng mật khẩu
         User result = userDAO.loginCheck(trimmedEmail, password);
 
         if (result != null) {
             HttpSession session = request.getSession();
             
-            // Đọc dữ liệu từ Object User
             long userId = result.getUser_id();  
             String userEmail = result.getEmail();
-            String role = result.getRole(); // 'admin', 'borrower', hoặc 'investor'
+            String role = result.getRole();
 
-            // Lưu thông tin cơ bản vào Session
             session.setAttribute("userId", userId);
             session.setAttribute("email", userEmail);
             session.setAttribute("role", role);
 
-            // Lấy chuỗi trạng thái cụ thể ('pending', 'verified', 'rejected') từ DB phục vụ hiển thị nhãn ở Dashboard
+            if ("admin".equals(role)) {
+                session.setAttribute("adminEmail", userEmail);
+                session.setAttribute("adminId", userId);
+                response.sendRedirect(request.getContextPath() + "/AdminDashboardServlet");
+                return;
+            }
+
+            String accountStatus = userDAO.getUserAccountStatus(userId);
+            if (accountStatus == null || !"active".equalsIgnoreCase(accountStatus)) {
+                session.invalidate();
+                request.setAttribute("errorMessage", "Tài khoản chưa được kích hoạt hoặc đã bị tạm khóa. Vui lòng liên hệ quản trị viên.");
+                request.setAttribute("oldEmail", email);
+                request.getRequestDispatcher("login.jsp").forward(request, response);
+                return;
+            }
+
             String ekycStatus = userDAO.getEkycStatus(userId);
             session.setAttribute("verification_status", ekycStatus != null ? ekycStatus : "none");
 
-            // ĐỒNG BỘ LOGIC: Kiểm tra xem tài khoản đã từng nộp hồ sơ eKYC (bất kể trạng thái nào) chưa
+            // Kiểm tra tài khoản đã từng nộp hồ sơ eKYC (bất kể trạng thái) chưa
             boolean hasCompletedEkyc = userDAO.checkUserEKYC(userId);
 
-            // 4. Luồng điều hướng phân quyền theo trạng thái Đăng nhập lần 1 và lần 2
-            if ("admin".equals(role)) {
-                response.sendRedirect("admin-dashboard.jsp");
-            } 
-            else if ("borrower".equals(role)) {
-                // LOGIC: Đã có hồ sơ (pending, verified, rejected) -> Vào thẳng Dashboard
+            if ("borrower".equals(role)) {
                 if (hasCompletedEkyc) {
                     response.sendRedirect(request.getContextPath() + "/BorrowerDashboardServlet?action=dashboard");
                 } else {
-                    // LẦN ĐẦU: Hoàn toàn chưa nộp hồ sơ eKYC -> Chuyển sang trang ekyc.jsp
                     response.sendRedirect("ekyc.jsp");
                 }
             } 
             else if ("investor".equals(role)) {
-                // LOGIC: Đã có hồ sơ (pending, verified, rejected) -> Vào thẳng Dashboard
                 if (hasCompletedEkyc) {
-                    response.sendRedirect(request.getContextPath() + "/InvestorDashboardServlet");
+                    response.sendRedirect(request.getContextPath() + "/InvestorDashboardServlet?action=dashboard");
                 } else {
-                    // LẦN ĐẦU: Hoàn toàn chưa nộp hồ sơ eKYC -> Chuyển sang trang ekyc.jsp
                     response.sendRedirect("ekyc.jsp");
                 }
             } 
@@ -95,7 +97,6 @@ public class LoginController extends HttpServlet {
             }
             
         } else {
-            // Sai mật khẩu đăng nhập
             request.setAttribute("errorMessage", "Mật khẩu không chính xác! Vui lòng thử lại.");
             request.setAttribute("oldEmail", email); 
             request.getRequestDispatcher("login.jsp").forward(request, response);

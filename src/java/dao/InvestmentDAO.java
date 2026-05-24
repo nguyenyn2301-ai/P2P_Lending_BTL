@@ -76,6 +76,28 @@ public class InvestmentDAO {
         return false;
     }
 
+    public List<Investment> getInvestmentsByInvestor(long investorId) {
+        List<Investment> list = new ArrayList<>();
+        String sql = "SELECT i.investment_id, i.loan_id, i.investor_id, i.amount_invested, i.status, i.invested_at, "
+                + "CONCAT(inv.first_name, ' ', inv.last_name) AS investor_name, l.loan_code, l.total_amount "
+                + "FROM investments i "
+                + "INNER JOIN investors inv ON i.investor_id = inv.investor_id "
+                + "INNER JOIN loans l ON i.loan_id = l.loan_id "
+                + "WHERE i.investor_id = ? ORDER BY i.invested_at DESC";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, investorId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    list.add(mapRow(rs));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
     public List<Investment> getByLoanId(long loanId) {
         List<Investment> list = new ArrayList<>();
         String sql = "SELECT i.investment_id, i.loan_id, i.investor_id, i.amount_invested, i.status, i.invested_at, "

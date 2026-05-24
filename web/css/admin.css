@@ -42,12 +42,18 @@
 }
 .admin-sidebar .sub-menu { margin-left: 12px; font-size: 13px; }
 
+.admin-with-notif .admin-main {
+    margin-right: 280px;
+}
+
 .admin-main {
     margin-left: 280px;
     flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
+    min-height: 100vh;
+    box-sizing: border-box;
 }
 
 .admin-topbar {
@@ -123,3 +129,49 @@
 }
 .alert-admin.success { background: #dcfce7; color: #166534; }
 .alert-admin.error { background: #fee2e2; color: #991b1b; }
+
+/* Đồng bộ nút đăng xuất với borrower/investor dashboard */
+.admin-sidebar .btn-logout {
+    background-color: #334155;
+    color: #f1f5f9;
+    border: none;
+    padding: 12px;
+    width: 100%;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.admin-sidebar .btn-logout:hover {
+    background-color: #475569;
+    color: #ffffff;
+}
+
+.ekyc-thumb {
+    max-width: 90px;
+    max-height: 70px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    object-fit: cover;
+    vertical-align: middle;
+}
+.ekyc-missing {
+    color: #94a3b8;
+    font-size: 12px;
+    font-style: italic;
+}
+
+.doc-preview-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
+.doc-preview-item {
+    text-align: center;
+}
+.doc-preview-label {
+    font-size: 12px;
+    color: #64748b;
+    margin-bottom: 6px;
+}

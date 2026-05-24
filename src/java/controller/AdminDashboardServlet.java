@@ -1,6 +1,9 @@
 package controller;
 
 import dao.*;
+import model.Notification;
+import model.WalletDeposit;
+import util.UploadConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
@@ -16,9 +19,11 @@ public class AdminDashboardServlet extends HttpServlet {
             throws ServletException, IOException {
         HttpSession session = request.getSession(false);
         if (session == null || !"admin".equals(session.getAttribute("role"))) {
-            response.sendRedirect(request.getContextPath() + "/admin_login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login.jsp");
             return;
         }
+
+        UploadConfig.ensureDirectoriesExist();
 
         String section = request.getParameter("section");
         if (section == null || section.isEmpty()) section = "ekyc";
@@ -26,6 +31,17 @@ public class AdminDashboardServlet extends HttpServlet {
         UserDAO userDAO = new UserDAO();
         LoanDAO loanDAO = new LoanDAO();
         InvestmentDAO investmentDAO = new InvestmentDAO();
+        NotificationDAO notificationDAO = new NotificationDAO();
+        WalletDepositDAO walletDepositDAO = new WalletDepositDAO();
+
+        Long adminId = (Long) session.getAttribute("adminId");
+        if (adminId == null) {
+            adminId = userDAO.getAdminUserId();
+        }
+        if (adminId != null && adminId > 0) {
+            List<Notification> adminNotifications = notificationDAO.getNotificationsByUserId(adminId);
+            request.setAttribute("adminNotifications", adminNotifications);
+        }
 
         try {
             switch (section) {
@@ -34,6 +50,10 @@ public class AdminDashboardServlet extends HttpServlet {
                     break;
                 case "investments":
                     request.setAttribute("pendingInvestments", investmentDAO.getPendingInvestments());
+                    break;
+                case "investor_deposits":
+                    List<WalletDeposit> pendingDeposits = walletDepositDAO.getPendingDeposits();
+                    request.setAttribute("pendingDeposits", pendingDeposits);
                     break;
                 case "loan_new":
                     request.setAttribute("pendingLoanApps", loanDAO.getPendingLoans());
@@ -58,6 +78,12 @@ public class AdminDashboardServlet extends HttpServlet {
                     List<Map<String, Object>> users = userDAO.getAllUsersByRole(roleFilter);
                     request.setAttribute("userList", users);
                     request.setAttribute("roleFilter", roleFilter);
+                    break;
+                case "documents":
+                    long docUserId = Long.parseLong(request.getParameter("userId"));
+                    request.setAttribute("docUserId", docUserId);
+                    request.setAttribute("ekycDocList", userDAO.getEkycDocumentsByUserId(docUserId));
+                    request.setAttribute("loanPdfList", loanDAO.getLoanPdfDocumentsByBorrower(docUserId));
                     break;
                 default:
                     section = "ekyc";

@@ -36,15 +36,15 @@ public class InvestmentController extends HttpServlet {
         Loan loan = loanDAO.getLoanById(loanId);
 
         if (inv == null || loan == null || !"funding".equals(loan.getStatus())) {
-            response.sendRedirect(request.getContextPath() + "/InvestorDashboardServlet?msg=invalid");
+            response.sendRedirect(request.getContextPath() + "/InvestorDashboardServlet?action=market&msg=invalid");
             return;
         }
         if (!"verified".equals(inv.getVerificationStatus())) {
-            response.sendRedirect(request.getContextPath() + "/InvestorDashboardServlet?msg=ekyc");
+            response.sendRedirect(request.getContextPath() + "/InvestorDashboardServlet?action=market&msg=ekyc");
             return;
         }
         if (inv.getWalletBalance().compareTo(amount) < 0) {
-            response.sendRedirect(request.getContextPath() + "/InvestorDashboardServlet?msg=insufficient");
+            response.sendRedirect(request.getContextPath() + "/InvestorDashboardServlet?action=market&msg=insufficient");
             return;
         }
 
@@ -60,6 +60,6 @@ public class InvestmentController extends HttpServlet {
                     "Khoản góp vốn " + amount + " VNĐ đang chờ Admin duyệt.");
         }
 
-        response.sendRedirect(request.getContextPath() + "/InvestorDashboardServlet?msg=" + (ok ? "pending" : "fail"));
+        response.sendRedirect(request.getContextPath() + "/InvestorDashboardServlet?action=market&msg=" + (ok ? "pending" : "fail"));
     }
 }

@@ -78,13 +78,54 @@ public class BorrowerDAO {
         return totalDebt;
     }
 
+    /**
+     * Một thời điểm chỉ được có tối đa một gói gọi vốn chưa kết thúc:
+     * - Đơn chờ duyệt (pending)
+     * - Gói đang gọi vốn chưa đủ 100% (funding)
+     * - Gói đang vận hành / trả nợ (process, overdue)
+     * Chỉ được tạo đơn mới khi gói trước đã completed hoặc failed (hết hạn gọi vốn).
+     */
+    public boolean hasUnresolvedCapitalPackage(long borrowerId) {
+        String sqlPending = "SELECT COUNT(*) FROM loan_applications WHERE borrower_id = ? AND status = 'pending'";
+        String sqlActiveLoans = "SELECT COUNT(*) FROM loans l "
+                + "INNER JOIN loan_applications la ON l.application_id = la.application_id "
+                + "WHERE la.borrower_id = ? AND l.status IN ('funding', 'process', 'overdue')";
+        String sqlApprovedNoLoan = "SELECT COUNT(*) FROM loan_applications la "
+                + "LEFT JOIN loans l ON la.application_id = l.application_id "
+                + "WHERE la.borrower_id = ? AND la.status = 'approved' AND l.loan_id IS NULL";
+
+        try (Connection conn = DBConnection.getConnection()) {
+            if (countQuery(conn, sqlPending, borrowerId) > 0) return true;
+            if (countQuery(conn, sqlActiveLoans, borrowerId) > 0) return true;
+            if (countQuery(conn, sqlApprovedNoLoan, borrowerId) > 0) return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    private int countQuery(Connection conn, String sql, long borrowerId) throws Exception {
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, borrowerId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        }
+        return 0;
+    }
+
     // =========================================================================
     // 3. LẤY DANH SÁCH ĐƠN VAY CÁ NHÂN (ĐỒNG BỘ ĐỊNH DẠNG MỚI)
     // =========================================================================
     public List<LoanApplication> getLoansByBorrower(long borrowerId) {
         List<LoanApplication> list = new ArrayList<>();
-        String sql = "SELECT application_id, amount_requested, term_months, created_at, cic_pdf_url, status " +
-                     "FROM loan_applications WHERE borrower_id = ? ORDER BY created_at DESC";
+        String sql = "SELECT la.application_id, la.amount_requested, la.term_months, la.created_at, la.cic_pdf_url, la.status, "
+                     + "l.loan_id "
+                     + "FROM loan_applications la "
+                     + "LEFT JOIN loans l ON la.application_id = l.application_id "
+                     + "WHERE la.borrower_id = ? ORDER BY la.created_at DESC";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             
@@ -93,13 +134,16 @@ public class BorrowerDAO {
                 while (rs.next()) {
                     LoanApplication loan = new LoanApplication();
                     
-                    loan.setApplicationId(rs.getLong("application_id")); 
+                    loan.setApplicationId(rs.getLong("application_id"));
+                    long loanId = rs.getLong("loan_id");
+                    if (!rs.wasNull()) {
+                        loan.setLoanId(loanId);
+                    }
                     loan.setAmountRequested(rs.getBigDecimal("amount_requested")); 
                     loan.setTermMonths(rs.getInt("term_months")); 
                     loan.setCreatedAt(rs.getTimestamp("created_at"));
                     loan.setCicPdfUrl(rs.getString("cic_pdf_url")); 
                     
-                    // Ánh xạ trạng thái hiển thị tiếng Việt đồng bộ với hệ thống chính
                     String dbStatus = rs.getString("status");
                     if ("pending".equalsIgnoreCase(dbStatus)) loan.setStatus("Chờ duyệt");
                     else if ("approved".equalsIgnoreCase(dbStatus)) loan.setStatus("Đã duyệt");
@@ -154,6 +198,24 @@ public class BorrowerDAO {
                     return psInsert.executeUpdate() > 0;
                 }
             }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean updateBorrowerProfile(long borrowerId, String firstName, String lastName,
+            String idCardNumber, double monthlyIncome) {
+        String sql = "UPDATE borrowers SET first_name = ?, last_name = ?, id_card_number = ?, monthly_income = ? "
+                + "WHERE borrower_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, firstName);
+            ps.setString(2, lastName);
+            ps.setString(3, idCardNumber);
+            ps.setBigDecimal(4, BigDecimal.valueOf(monthlyIncome));
+            ps.setLong(5, borrowerId);
+            return ps.executeUpdate() > 0;
         } catch (Exception e) {
             e.printStackTrace();
         }

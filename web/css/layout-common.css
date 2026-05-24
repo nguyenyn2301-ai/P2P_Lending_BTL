@@ -1,29 +1,59 @@
-/* 3-column dashboard + footer + back-to-top */
-.dashboard-wrapper {
-    display: flex;
-    min-height: 100vh;
-    padding-bottom: 56px;
+/* 3-column dashboard layout (sidebar + main + notifications) */
+:root {
+    --sidebar-width: 260px;
+    --notification-width: 280px;
 }
 
-.dashboard-wrapper .sidebar { position: fixed; }
+/* Block layout: fixed sidebar/panel không tham gia flex → tránh khoảng trống thừa */
+body.dashboard-wrapper {
+    display: block;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+.dashboard-wrapper .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
 
 .dashboard-wrapper .main-content {
-    margin-left: 260px;
-    margin-right: 300px;
-    flex: 1;
+    margin-left: var(--sidebar-width);
+    margin-right: var(--notification-width);
+    min-height: 100vh;
+    width: auto;
+    max-width: none;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+.dashboard-wrapper .main-content > .container {
+    flex: 1 0 auto;
 }
 
 .notification-panel {
-    width: 280px;
+    width: var(--notification-width);
     background: #ffffff;
     border-left: 1px solid #e2e8f0;
     position: fixed;
     right: 0;
     top: 0;
-    bottom: 56px;
+    bottom: 0;
+    height: 100vh;
     overflow-y: auto;
     padding: 20px 16px;
     z-index: 90;
+    box-sizing: border-box;
 }
 
 .notification-panel h4 {
@@ -45,24 +75,26 @@
 .notif-item p { color: #64748b; margin: 0; line-height: 1.4; }
 .notif-item small { color: #94a3b8; }
 
+/* Footer cố định (nếu trang nào còn dùng) — không đè lên nội dung dashboard */
 .site-footer {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 48px;
+    position: relative;
+    width: 100%;
+    height: auto;
+    min-height: 48px;
+    padding: 12px 16px;
     background: #1e293b;
     color: #e2e8f0;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 13px;
-    z-index: 200;
+    z-index: 1;
+    box-sizing: border-box;
 }
 
 #backToTop {
     position: fixed;
-    bottom: 68px;
+    bottom: 20px;
     right: 20px;
     width: 44px;
     height: 44px;
@@ -88,12 +120,33 @@
 .status-completed { color: #ca8a04; font-weight: 700; }
 
 @media (max-width: 1200px) {
-    .dashboard-wrapper .main-content { margin-right: 0; }
+    body.dashboard-wrapper {
+        padding-bottom: 0;
+    }
+
+    .dashboard-wrapper .main-content {
+        margin-right: 0;
+        min-height: auto;
+    }
+
     .notification-panel {
         position: static;
         width: 100%;
+        height: auto;
+        max-height: none;
         border-left: none;
         border-top: 1px solid #e2e8f0;
+        margin-left: var(--sidebar-width);
+        box-sizing: border-box;
     }
-    .dashboard-wrapper { flex-direction: column; }
+}
+
+@media (max-width: 992px) {
+    .dashboard-wrapper .main-content {
+        margin-left: 70px;
+    }
+
+    .notification-panel {
+        margin-left: 70px;
+    }
 }

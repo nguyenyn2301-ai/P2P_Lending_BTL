@@ -9,12 +9,21 @@ import java.util.List;
 public class NotificationDAO {
 
     public boolean addNotification(long userId, String title, String message) {
-        String sql = "INSERT INTO notifications (user_id, title, message, is_read) VALUES (?, ?, ?, FALSE)";
+        return addNotification(userId, title, message, null);
+    }
+
+    public boolean addNotification(long userId, String title, String message, String linkUrl) {
+        String sql = "INSERT INTO notifications (user_id, title, message, link_url, is_read) VALUES (?, ?, ?, ?, FALSE)";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, userId);
             ps.setString(2, title);
             ps.setString(3, message);
+            if (linkUrl != null && !linkUrl.trim().isEmpty()) {
+                ps.setString(4, linkUrl.trim());
+            } else {
+                ps.setNull(4, Types.VARCHAR);
+            }
             return ps.executeUpdate() > 0;
         } catch (Exception e) {
             e.printStackTrace();
@@ -24,7 +33,7 @@ public class NotificationDAO {
 
     public List<Notification> getNotificationsByUserId(long userId) {
         List<Notification> list = new ArrayList<>();
-        String sql = "SELECT notification_id, user_id, title, message, is_read, created_at "
+        String sql = "SELECT notification_id, user_id, title, message, link_url, is_read, created_at "
                 + "FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 30";
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -36,6 +45,11 @@ public class NotificationDAO {
                     n.setUserId(rs.getLong("user_id"));
                     n.setTitle(rs.getString("title"));
                     n.setMessage(rs.getString("message"));
+                    try {
+                        n.setLinkUrl(rs.getString("link_url"));
+                    } catch (SQLException ignored) {
+                        n.setLinkUrl(null);
+                    }
                     n.setRead(rs.getBoolean("is_read"));
                     n.setCreatedAt(rs.getTimestamp("created_at"));
                     list.add(n);

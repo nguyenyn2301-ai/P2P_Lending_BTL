@@ -2,6 +2,7 @@ package controller;
 
 import dao.*;
 import model.Loan;
+import model.LoanApplication;
 import model.Notification;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -76,13 +77,28 @@ public class RepaymentServlet extends HttpServlet {
             repaymentViews.add(view);
         }
 
+        model.Borrower borrower = borrowerDAO.getBorrowerById(userId);
+        String borrowerName = borrower != null
+                ? borrower.getFirstName() + " " + borrower.getLastName()
+                : "Người vay";
+
+        UserDAO userDAO = new UserDAO();
+        String verificationStatus = userDAO.getEkycStatus(userId);
+        if (verificationStatus == null || verificationStatus.trim().isEmpty()) {
+            verificationStatus = "none";
+        }
+        session.setAttribute("verification_status", verificationStatus);
+
+        boolean hasActiveLoan = borrowerDAO.hasUnresolvedCapitalPackage(userId);
+
+        request.setAttribute("currentAction", "repayment");
         request.setAttribute("repaymentViews", repaymentViews);
         request.setAttribute("hasOverdue", hasOverdue);
         request.setAttribute("hasActiveContract", hasActiveContract);
+        request.setAttribute("hasActiveLoan", hasActiveLoan || hasOverdue);
+        request.setAttribute("trangThaiEkyc", verificationStatus);
         request.setAttribute("notifications", notifDAO.getNotificationsByUserId(userId));
-        request.setAttribute("borrowerName", borrowerDAO.getBorrowerById(userId) != null
-                ? borrowerDAO.getBorrowerById(userId).getFirstName() + " " + borrowerDAO.getBorrowerById(userId).getLastName()
-                : "Người vay");
+        request.setAttribute("borrowerName", borrowerName);
         request.getRequestDispatcher("/repayment.jsp").forward(request, response);
     }
 

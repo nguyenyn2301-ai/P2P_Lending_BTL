@@ -11,18 +11,54 @@
 </head>
 <body class="dashboard-wrapper">
     <div class="sidebar">
-        <div class="sidebar-brand">🏛️ <span>P2P BORROWER</span></div>
-        <ul class="sidebar-menu">
-            <li><a href="${pageContext.request.contextPath}/BorrowerDashboardServlet">📊 Tổng quan</a></li>
-            <li class="active"><a href="${pageContext.request.contextPath}/RepaymentServlet">💳 Trả nợ theo kỳ</a></li>
-        </ul>
-        <form action="${pageContext.request.contextPath}/logout" method="POST"><button type="submit" class="btn-logout">Đăng xuất</button></form>
+        <div>
+            <div class="sidebar-brand">🏛️ <span>P2P LENDING</span></div>
+            <ul class="sidebar-menu">
+                <li class="${empty currentAction || currentAction == 'dashboard' ? 'active' : ''}">
+                    <a href="${pageContext.request.contextPath}/BorrowerDashboardServlet?action=dashboard">Tổng Quan Main</a>
+                </li>
+                <c:choose>
+                    <c:when test="${trangThaiEkyc == 'rejected'}">
+                        <li class="disabled-menu" onclick="alert('Không thể đăng ký: Hồ sơ eKYC của bạn đã bị từ chối!')">
+                            <a href="javascript:void(0);">🔒 Đăng Ký Vay Mới</a>
+                        </li>
+                    </c:when>
+                    <c:when test="${hasOverdue}">
+                        <li class="disabled-menu" onclick="alert('Không thể đăng ký: Bạn có khoản vay quá hạn!')">
+                            <a href="javascript:void(0);">🔒 Đăng Ký Vay Mới (Quá hạn)</a>
+                        </li>
+                    </c:when>
+                    <c:when test="${hasActiveLoan}">
+                        <li class="disabled-menu" onclick="alert('Bạn đang có đơn vay chưa tất toán!')">
+                            <a href="javascript:void(0);">🔒 Đăng Ký Vay Mới</a>
+                        </li>
+                    </c:when>
+                    <c:otherwise>
+                        <li>
+                            <a href="${pageContext.request.contextPath}/BorrowerDashboardServlet?action=create_loan">Đăng Ký Vay Mới</a>
+                        </li>
+                    </c:otherwise>
+                </c:choose>
+                <li>
+                    <a href="${pageContext.request.contextPath}/BorrowerDashboardServlet?action=market_loans">Khoản Vay Trên Sàn</a>
+                </li>
+                <li class="${currentAction == 'repayment' ? 'active' : ''}">
+                    <a href="${pageContext.request.contextPath}/RepaymentServlet">Trả Nợ Theo Kỳ</a>
+                </li>
+            </ul>
+        </div>
+        <form action="${pageContext.request.contextPath}/logout" method="POST" style="margin:0;">
+            <button type="submit" class="btn-logout">Đăng xuất</button>
+        </form>
     </div>
 
     <div class="main-content">
         <div class="topbar">
             <div class="topbar-title">Quản lý trả nợ</div>
-            <span>Xin chào, <strong>${borrowerName}</strong></span>
+            <div class="user-info" style="text-align: right;">
+                <div><span>Xin chào, <strong>${borrowerName}</strong></span></div>
+                <div style="font-style: italic; color: #94a3b8; font-size: 12px; margin-top: 4px;">Liên lạc quản trị viện: Email: admin@gmail.com - Số điện thoại: 01234567891</div>
+            </div>
         </div>
         <div class="container">
             <c:if test="${hasOverdue}">
@@ -84,10 +120,10 @@
                 <h5>${n.title}</h5><p>${n.message}</p>
             </div>
         </c:forEach>
+        <c:if test="${empty notifications}"><p style="color:#94a3b8;font-size:13px;">Chưa có thông báo.</p></c:if>
     </aside>
 
-    <footer class="site-footer">Email: admin@gmail.com - Số điện thoại: 01234567891</footer>
-    <button id="backToTop">↑</button>
+    <button id="backToTop" title="Lên đầu trang">↑</button>
     <script src="${pageContext.request.contextPath}/js/back-to-top.js"></script>
 </body>
 </html>

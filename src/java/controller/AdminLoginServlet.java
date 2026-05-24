@@ -17,7 +17,7 @@ public class AdminLoginServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         // Nếu người dùng cố tình truy cập link trực tiếp, đẩy về trang đăng nhập
-        response.sendRedirect("admin_login.jsp");
+        response.sendRedirect(request.getContextPath() + "/login.jsp");
     }
 
     @Override
@@ -40,7 +40,7 @@ public class AdminLoginServlet extends HttpServlet {
         } else {
             // Đăng nhập thất bại -> Trả về thông báo lỗi và load lại trang đăng nhập admin
             request.setAttribute("errorMessage", "Tài khoản hoặc Mật khẩu quản trị viên không đúng!");
-            request.getRequestDispatcher("admin_login.jsp").forward(request, response);
+            response.sendRedirect(request.getContextPath() + "/login.jsp");
         }
     }
 }

@@ -38,14 +38,13 @@
             font-size: 14px; 
         }
         
-        /* ĐỒNG BỘ CSS: Giữ chuẩn cấu trúc khung wrapper mật khẩu của trang login */
         .password-wrapper { 
             position: relative; 
             display: flex; 
             align-items: center; 
         }
         .password-wrapper input {
-            padding-right: 40px; /* Tránh text mật khẩu đè lên con mắt */
+            padding-right: 40px;
         }
         .toggle-password { 
             position: absolute; 
@@ -86,16 +85,25 @@
             padding-left: 10px; 
             margin-top: 15px; 
         }
+        .section-title {
+            font-size: 15px;
+            color: #333;
+            margin: 0 0 14px 0;
+            font-weight: 600;
+        }
         .login-link { text-align: center; margin-top: 20px; font-size: 14px; }
         .login-link a { color: #007bff; text-decoration: none; }
+        .terms-row { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; color: #555; margin-bottom: 16px; }
+        .terms-row input[type="checkbox"] { width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; }
+        .terms-link { text-decoration: underline; color: #007bff; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="register-container">
     <h2>Đăng ký hệ thống P2P</h2>
+    <p style="text-align:center;color:#666;font-size:14px;margin:-12px 0 20px 0;">Bước 1 / 2 — Tạo tài khoản &amp; thông tin hồ sơ</p>
 
-    <%-- Hiển thị thông báo lỗi từ Controller gửi về --%>
     <% 
         String error = request.getParameter("error");
         if ("passwordMismatch".equals(error)) { %>
@@ -108,10 +116,11 @@
             <div class="error-msg"><i class="fa-solid fa-circle-exclamation"></i> Vui lòng điền đầy đủ tất cả các trường bắt buộc!</div>
      <% } else if ("invalidIncome".equals(error)) { %>
             <div class="error-msg"><i class="fa-solid fa-circle-exclamation"></i> Thu nhập nhập vào phải là một số hợp lệ!</div>
+     <% } else if ("terms".equals(error)) { %>
+            <div class="error-msg"><i class="fa-solid fa-circle-exclamation"></i> Bạn cần đồng ý với điều khoản sử dụng để đăng ký!</div>
      <% } 
     %>
     
-    <%-- Div hiển thị lỗi Client-side bằng Javascript --%>
     <div id="jsError" class="error-msg" style="display: none;"></div>
 
     <form action="RegisterController" method="POST" onsubmit="return validateForm()">
@@ -155,8 +164,8 @@
             <input type="text" id="lastName" name="lastName" placeholder="Nhập họ..." required>
         </div>
 
-        <%-- Các trường thông tin riêng cho Borrower --%>
         <div id="borrowerFields" class="dynamic-section">
+            <p class="section-title">Form hồ sơ đăng ký (Người đi vay)</p>
             <div class="form-group">
                 <label for="idCardNumber">Số CCCD (12 số):</label>
                 <input type="text" id="idCardNumber" name="idCardNumber" placeholder="Nhập 12 số CCCD">
@@ -167,8 +176,8 @@
             </div>
         </div>
 
-        <%-- Các trường thông tin riêng cho Investor --%>
         <div id="investorFields" class="dynamic-section">
+            <p class="section-title">Form hồ sơ đăng ký (Nhà đầu tư)</p>
             <div class="form-group">
                 <label for="riskAppetite">Khẩu vị rủi ro:</label>
                 <select id="riskAppetite" name="riskAppetite">
@@ -177,6 +186,13 @@
                     <option value="Aggressive">Mạo hiểm (Aggressive)</option>
                 </select>
             </div>
+        </div>
+
+        <div class="terms-row">
+            <input type="checkbox" name="agreeTerms" id="agreeTerms" value="on">
+            <label for="agreeTerms">
+                Tôi đồng ý với <span class="terms-link" onclick="openTerms(event)">điều khoản sử dụng</span>
+            </label>
         </div>
 
         <button type="submit" class="btn-submit">Hoàn tất đăng ký</button>
@@ -188,7 +204,6 @@
 </div>
 
 <script>
-    // HÀM JS CẢI TIẾN: Thay đổi Class Fa-Eye chuẩn mực cho cả hai ô độc lập
     function togglePasswordVisibility(inputId, iconId) {
         const passwordInput = document.getElementById(inputId);
         const eyeIcon = document.getElementById(iconId);
@@ -202,6 +217,11 @@
             eyeIcon.classList.remove("fa-eye-slash");
             eyeIcon.classList.add("fa-eye");
         }
+    }
+
+    function openTerms(e) {
+        e.preventDefault();
+        window.open('terms.jsp', 'terms', 'width=800,height=600,scrollbars=yes');
     }
 
     function toggleRoleFields() {
@@ -236,6 +256,12 @@
 
         jsError.style.display = "none";
         jsError.innerHTML = "";
+
+        if (!document.getElementById("agreeTerms").checked) {
+            jsError.innerHTML = "<i class='fa-solid fa-circle-exclamation'></i> Bạn cần đồng ý với điều khoản sử dụng!";
+            jsError.style.display = "block";
+            return false;
+        }
 
         if (password !== confirmPassword) {
             jsError.innerHTML = "<i class='fa-solid fa-circle-exclamation'></i> Mật khẩu xác nhận không trùng khớp!";

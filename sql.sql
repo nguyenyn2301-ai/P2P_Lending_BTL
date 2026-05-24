@@ -5,6 +5,7 @@ USE p2p_lending_db;
 -- KHỞI TẠO: Xóa bảng cũ theo thứ tự ngược lại để tránh xung đột Foreign Key
 -- =========================================================================
 SET FOREIGN_KEY_CHECKS = 0;
+DROP TABLE IF EXISTS wallet_deposits;
 DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS documents;
 DROP TABLE IF EXISTS transactions;
@@ -156,7 +157,20 @@ CREATE TABLE notifications (
     user_id BIGINT NOT NULL,
     title VARCHAR(255) NOT NULL,
     message TEXT NOT NULL,
+    link_url VARCHAR(255) NULL,
     is_read BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_notif_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- 12. Table: wallet_deposits (nạp tiền nhà đầu tư)
+CREATE TABLE wallet_deposits (
+    deposit_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    investor_id BIGINT NOT NULL,
+    amount DECIMAL(15,2) NOT NULL,
+    transfer_content VARCHAR(255) NOT NULL,
+    cic_pdf_url VARCHAR(255) NOT NULL,
+    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_deposit_investor FOREIGN KEY (investor_id) REFERENCES investors(investor_id) ON DELETE RESTRICT
 ) ENGINE=InnoDB;

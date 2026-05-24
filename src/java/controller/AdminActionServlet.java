@@ -1,6 +1,8 @@
 package controller;
 
 import dao.*;
+import util.UploadConfig;
+import java.util.List;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.*;
@@ -14,7 +16,7 @@ public class AdminActionServlet extends HttpServlet {
             throws ServletException, IOException {
         HttpSession session = request.getSession(false);
         if (session == null || !"admin".equals(session.getAttribute("role"))) {
-            response.sendRedirect(request.getContextPath() + "/admin_login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login.jsp");
             return;
         }
 
@@ -32,6 +34,9 @@ public class AdminActionServlet extends HttpServlet {
                 response.sendRedirect(ctx + "/AdminDashboardServlet?section=ekyc&msg=ekyc_ok");
             } else if ("reject_ekyc".equals(action)) {
                 long userId = Long.parseLong(request.getParameter("userId"));
+                List<String> ekycPaths = userDAO.getEkycFilePathsByUserId(userId);
+                UploadConfig.deletePhysicalFiles(ekycPaths);
+                userDAO.deleteEkycDocumentsForUser(userId);
                 userDAO.updateUserVerification(userId, "rejected");
                 notifDAO.addNotification(userId, "eKYC bị từ chối", "Hồ sơ định danh không đạt yêu cầu. Vui lòng cập nhật lại.");
                 response.sendRedirect(ctx + "/AdminDashboardServlet?section=ekyc&msg=ekyc_reject");
@@ -84,6 +89,21 @@ public class AdminActionServlet extends HttpServlet {
                             "Admin đã duyệt kết thúc gói vay. Bạn có thể đăng ký vay mới.");
                 }
                 response.sendRedirect(ctx + "/AdminDashboardServlet?section=loan_closed&msg=close_ok");
+            } else if ("approve_deposit".equals(action)) {
+                long depositId = Long.parseLong(request.getParameter("depositId"));
+                WalletDepositDAO depositDAO = new WalletDepositDAO();
+                if (depositDAO.approveDeposit(depositId)) {
+                    response.sendRedirect(ctx + "/AdminDashboardServlet?section=investor_deposits&msg=deposit_ok");
+                } else {
+                    response.sendRedirect(ctx + "/AdminDashboardServlet?section=investor_deposits&msg=deposit_fail");
+                }
+            } else if ("delete_user".equals(action)) {
+                long userId = Long.parseLong(request.getParameter("userId"));
+                if (userDAO.deleteUser(userId)) {
+                    response.sendRedirect(ctx + "/AdminDashboardServlet?section=users&msg=user_deleted");
+                } else {
+                    response.sendRedirect(ctx + "/AdminDashboardServlet?section=users&msg=user_delete_fail");
+                }
             } else {
                 response.sendRedirect(ctx + "/AdminDashboardServlet");
             }

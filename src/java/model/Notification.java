@@ -7,6 +7,7 @@ public class Notification {
     private long userId;
     private String title;
     private String message;
+    private String linkUrl;
     private boolean read;
     private Timestamp createdAt;
 
@@ -23,6 +24,9 @@ public class Notification {
 
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
+
+    public String getLinkUrl() { return linkUrl; }
+    public void setLinkUrl(String linkUrl) { this.linkUrl = linkUrl; }
 
     public boolean isRead() { return read; }
     public void setRead(boolean read) { this.read = read; }
